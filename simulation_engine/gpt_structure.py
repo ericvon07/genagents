@@ -4,6 +4,7 @@ import base64
 from typing import List, Union
 
 from simulation_engine.settings import *
+from lab import transport  # D2, D3 (System One Lab, 003-IP DS-D, DS-E)
 
 openai.api_key = OPENAI_API_KEY
 
@@ -66,14 +67,11 @@ def gpt_request(prompt: str,
       return f"GENERATION ERROR: {str(e)}"
 
   try:
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    response = client.chat.completions.create(
-      model=model,
-      messages=[{"role": "user", "content": prompt}],
-      max_tokens=max_tokens,
-      temperature=0.7
-    )
+    # D2, D3: through OpenRouter, pinned, ridden out; same model, prompt, max_tokens, temperature.
+    response = transport.chat(prompt, model, max_tokens, 0.7)
     return response.choices[0].message.content
+  except transport.Failed:
+    raise  # D3: a request given up on is an error the caller records, not an empty answer.
   except Exception as e:
     return f"GENERATION ERROR: {str(e)}"
 
@@ -159,8 +157,7 @@ def get_text_embedding(text: str,
     raise ValueError("Input text must be a non-empty string.")
 
   text = text.replace("\n", " ").strip()
-  response = openai.embeddings.create(
-    input=[text], model=model).data[0].embedding
+  response = transport.embed(text, model)  # D2, D3: through OpenRouter, ridden out.
   return response
 
 
