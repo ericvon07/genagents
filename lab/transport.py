@@ -53,6 +53,7 @@ DECLARED = ("openai", "azure")  # DS-I: the providers of openai/gpt-4o-mini, sam
 ENDPOINTS_URL = BASE_URL + "/models/%s/endpoints"
 WINDOW_S = 300           # the throughput floor looks at the last five minutes
 RETRY_PIN_AFTER_S = 900  # fifteen minutes after a move, the pin is tried again
+MATERIAL_GAP = 1.0       # uptime points another provider needs to take the pin from the first declared
 
 # DS-D's fallback: True when the health gate found OpenRouter's embeddings differ from
 # the stored ones; embeddings then go straight to OpenAI and the manifest says so.
@@ -146,8 +147,11 @@ def fetch_endpoints(model):
 
 
 def rank(body, declared=DECLARED):
-  """The declared providers that serve the model, best `uptime_last_30m` first (ties keep the
-  declared order, an unknown uptime goes last), and a snapshot of every endpoint listed."""
+  """The declared providers that serve the model, and a snapshot of every endpoint listed.
+  The first declared provider leads unless another beats its `uptime_last_30m` by
+  `MATERIAL_GAP` points or more (the author's rule at the dry run: a gap of hundredths is
+  noise, and the first declared is the faster); the rest follow by uptime, ties in declared
+  order, an unknown uptime last."""
   snapshot = [{"tag": e.get("tag"), "provider_name": e.get("provider_name"),
                "status": e.get("status"), "uptime_last_5m": e.get("uptime_last_5m"),
                "uptime_last_30m": e.get("uptime_last_30m"),
@@ -155,8 +159,11 @@ def rank(body, declared=DECLARED):
                "latency_p50_ms_30m": (e.get("latency_last_30m") or {}).get("p50")}
               for e in body["data"]["endpoints"]]
   served = {e["tag"]: e["uptime_last_30m"] for e in snapshot if e["tag"] in declared}
-  order = sorted((t for t in declared if t in served),
-                 key=lambda t: -(served[t] if served[t] is not None else -1))
+  uptime = lambda t: served[t] if served[t] is not None else -1
+  order = sorted((t for t in declared if t in served), key=lambda t: -uptime(t))
+  first = next((t for t in declared if t in served), None)
+  if order and uptime(order[0]) - uptime(first) < MATERIAL_GAP:
+    order = [first] + [t for t in order if t != first]
   return order, snapshot
 
 
