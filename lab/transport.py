@@ -14,13 +14,13 @@ which the paper's `gpt_request` lets through (its `except` would otherwise turn 
 "GENERATION ERROR" string that the parser reads as an empty answer). The client's own
 retries are off, so every wait the run makes is one this module recorded.
 
-Events go to the sinks in `SINKS`; 003-IP step 3 plugs the run's trace in there. With no
-sink an event is dropped.
+Events go through `lab.trace.emit`, to whatever sinks the run's trace opened.
 """
 import time
 
 import openai
 
+from lab import trace
 from simulation_engine import settings
 
 BASE_URL = "https://openrouter.ai/api/v1"
@@ -41,7 +41,6 @@ pin = "openai"
 # the stored ones; embeddings then go straight to OpenAI and the manifest says so.
 embeddings_direct = False
 
-SINKS = []
 sleep = time.sleep
 monotonic = time.monotonic
 
@@ -57,13 +56,6 @@ class Failed(Exception):
 
 class EmptyAnswer(Exception):
   """A 200 whose body carries no choices (OpenRouter reports upstream errors this way)."""
-
-
-def emit(event, **fields):
-  record = {"event": event, "ts": time.time(), **fields}
-  for sink in SINKS:
-    sink(record)
-  return record
 
 
 def openrouter_model(model):
@@ -112,21 +104,21 @@ def ride_out(send, kind, model, provider):
       last = attempt == ATTEMPTS
       if not _retryable(exc) or last:
         reason = "budget_spent" if _retryable(exc) else "not_retryable"
-        emit("error", kind=kind, model=model, provider=provider, attempt=attempt,
-             status=_status(exc), reason=reason, error=f"{type(exc).__name__}: {exc}")
+        trace.emit("error", kind=kind, model=model, provider=provider, attempt=attempt,
+                   status=_status(exc), reason=reason, error=f"{type(exc).__name__}: {exc}")
         raise Failed(reason, exc) from exc
       backoff = FIRST_WAIT_S * 2 ** (attempt - 1)
       wait = min(_retry_after(exc) or backoff, MAX_WAIT_S)
-      emit("rate_limit", kind=kind, model=model, provider=provider, attempt=attempt,
-           status=_status(exc), wait_s=wait, error=f"{type(exc).__name__}: {exc}")
+      trace.emit("rate_limit", kind=kind, model=model, provider=provider, attempt=attempt,
+                 status=_status(exc), wait_s=wait, error=f"{type(exc).__name__}: {exc}")
       sleep(wait)
       continue
     usage = getattr(response, "usage", None)
-    emit("call", kind=kind, model=getattr(response, "model", None) or model,
-         provider=getattr(response, "provider", None) or provider, attempt=attempt,
-         latency_ms=round((monotonic() - started) * 1000),
-         tokens_in=getattr(usage, "prompt_tokens", None),
-         tokens_out=getattr(usage, "completion_tokens", None))
+    trace.emit("call", kind=kind, model=getattr(response, "model", None) or model,
+               provider=getattr(response, "provider", None) or provider, attempt=attempt,
+               latency_ms=round((monotonic() - started) * 1000),
+               tokens_in=getattr(usage, "prompt_tokens", None),
+               tokens_out=getattr(usage, "completion_tokens", None))
     return response
 
 

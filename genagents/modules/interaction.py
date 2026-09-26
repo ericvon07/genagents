@@ -12,6 +12,7 @@ from simulation_engine.settings import *
 from simulation_engine.global_methods import *
 from simulation_engine.gpt_structure import *
 from simulation_engine.llm_json_parser import *
+from lab import predictor as _seam  # D4 (System One Lab, 003-IP DS-F)
 
 
 def _main_agent_desc(agent, anchor): 
@@ -84,8 +85,8 @@ def run_gpt_generate_categorical_resp(
 def categorical_resp(agent, questions): 
   anchor = " ".join(list(questions.keys()))
   agent_desc = _main_agent_desc(agent, anchor)
-  return run_gpt_generate_categorical_resp(
-           agent_desc, questions, "1", LLM_VERS)[0]
+  # D4: the selected predictor answers; with `cot` it is run_gpt_generate_categorical_resp.
+  return _seam.answer("categorical", agent_desc, questions)
 
 
 def run_gpt_generate_numerical_resp(
@@ -140,8 +141,8 @@ def run_gpt_generate_numerical_resp(
 def numerical_resp(agent, questions, float_resp): 
   anchor = " ".join(list(questions.keys()))
   agent_desc = _main_agent_desc(agent, anchor)
-  return run_gpt_generate_numerical_resp(
-           agent_desc, questions, float_resp, "1", LLM_VERS)[0]
+  # D4: the selected predictor answers; with `cot` it is run_gpt_generate_numerical_resp.
+  return _seam.answer("numerical", agent_desc, questions, float_resp)
 
 
 def run_gpt_generate_utterance(
