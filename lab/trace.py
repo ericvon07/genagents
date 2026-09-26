@@ -2,8 +2,9 @@
 
 The event shape is the sister lab's (System-1-Agentic-World, trace-and-manifest, 2026-09-22),
 cut to what a prediction run makes: `manifest`, `call`, `rate_limit`, `error`, `decision`,
-`provider_switch`, `backend_down`. Smallville's `reject` and `outcome` describe actions in a
-world and have no counterpart here. A name outside `EVENTS` is refused, so a typo cannot
+`provider_switch`, `backend_down`, plus `health`, the verdict of the gate before launch
+(003-IP DS-J). Smallville's `reject` and `outcome` describe actions in a world and have no
+counterpart here. A name outside `EVENTS` is refused, so a typo cannot
 write an event no reader looks for.
 
 `emit` sends a record to every sink in `SINKS`; a `Trace` opened on a path is one such sink
@@ -19,7 +20,7 @@ import threading
 import time
 
 EVENTS = {"manifest", "call", "rate_limit", "error", "decision", "provider_switch",
-          "backend_down"}
+          "backend_down", "health"}
 
 SINKS = []
 _bound = contextvars.ContextVar("lab_trace_bound", default={})

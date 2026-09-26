@@ -14,9 +14,23 @@ which the paper's `gpt_request` lets through (its `except` would otherwise turn 
 "GENERATION ERROR" string that the parser reads as an empty answer). The client's own
 retries are off, so every wait the run makes is one this module recorded.
 
+DS-I, the provider policy: `choose` asks OpenRouter which endpoints serve the model and
+ranks the declared candidates (`openai`, `azure`, the two that serve `gpt-4o-mini` with the
+same weights) by `uptime_last_30m`; the best is the pin unless one is forced, the rest are
+the fallbacks, and every endpoint's snapshot goes into `run.json`. `policy` then names the
+provider of each chat request. It moves to the next declared provider when a request spent
+its whole ride-out budget on the current one (`fallback`), or when answered calls over the
+last five minutes fall under `min_calls_per_minute` (`throughput`); fifteen minutes after a
+move away from the pin, the next request tries the pin again (`retry_pin`). Every move is a
+`provider_switch` event, emitted before the request that names the new provider.
+
 Events go through `lab.trace.emit`, to whatever sinks the run's trace opened.
 """
+import collections
+import json
+import threading
 import time
+import urllib.request
 
 import openai
 
@@ -35,8 +49,11 @@ FIRST_WAIT_S = 2
 MAX_WAIT_S = 120
 NOT_RETRIED = (400, 401, 402, 403)
 
-# The provider that serves chat. Step 5's launch query (DS-I) sets it; `openai` until then.
-pin = "openai"
+DECLARED = ("openai", "azure")  # DS-I: the providers of openai/gpt-4o-mini, same weights
+ENDPOINTS_URL = BASE_URL + "/models/%s/endpoints"
+WINDOW_S = 300           # the throughput floor looks at the last five minutes
+RETRY_PIN_AFTER_S = 900  # fifteen minutes after a move, the pin is tried again
+
 # DS-D's fallback: True when the health gate found OpenRouter's embeddings differ from
 # the stored ones; embeddings then go straight to OpenAI and the manifest says so.
 embeddings_direct = False
@@ -52,6 +69,110 @@ class Failed(Exception):
     super().__init__(f"{reason}: {cause}")
     self.reason = reason
     self.cause = cause
+
+
+class NoProvider(Exception):
+  """None of the declared providers serves the model now."""
+
+
+class Policy:
+  """Which provider the next chat request names (DS-I). Thread-safe: the runner's agents
+  share one policy."""
+
+  def __init__(self, pin="openai", fallbacks=(), min_calls_per_minute=None):
+    self.pin, self.fallbacks = pin, list(fallbacks)
+    self.floor = min_calls_per_minute
+    self.current, self.since = pin, None
+    self.answers = collections.deque()
+    self._lock = threading.Lock()
+
+  @property
+  def declared(self):
+    return [self.pin] + self.fallbacks
+
+  def _next(self):
+    declared = self.declared
+    if len(declared) < 2:
+      return None
+    return declared[(declared.index(self.current) + 1) % len(declared)]
+
+  def _move(self, to, reason, now, **extra):
+    trace.emit("provider_switch", kind="chat", reason=reason, from_provider=self.current,
+               to_provider=to, **extra)
+    self.current, self.since = to, now
+    self.answers.clear()
+
+  def _rate(self, now):
+    while self.answers and now - self.answers[0] > WINDOW_S:
+      self.answers.popleft()
+    return len(self.answers) / (WINDOW_S / 60)
+
+  def provider(self):
+    """The provider the next request names, after any move the clock or the floor calls for."""
+    with self._lock:
+      now = monotonic()
+      if self.since is None:
+        self.since = now
+      if self.current != self.pin and now - self.since >= RETRY_PIN_AFTER_S:
+        self._move(self.pin, "retry_pin", now)
+      elif self.floor is not None and self._next() and now - self.since >= WINDOW_S:
+        rate = self._rate(now)
+        if rate < self.floor:
+          self._move(self._next(), "throughput", now, calls_per_minute=round(rate, 2),
+                     min_calls_per_minute=self.floor)
+      return self.current
+
+  def answered(self, provider):
+    with self._lock:
+      if provider == self.current:
+        self.answers.append(monotonic())
+
+  def failed(self, provider):
+    """A request spent its ride-out budget on `provider`: the next one names the next provider."""
+    with self._lock:
+      if provider == self.current and self._next():
+        self._move(self._next(), "fallback", monotonic())
+
+
+# The run's policy; the runner replaces it at launch. Until then: the pin `openai`, no fallback.
+policy = Policy()
+
+
+def fetch_endpoints(model):
+  request = urllib.request.Request(ENDPOINTS_URL % model, headers={
+    "Authorization": "Bearer %s" % settings.OPENROUTER_API_KEY, **HEADERS})
+  with urllib.request.urlopen(request, timeout=30) as response:
+    return json.load(response)
+
+
+def rank(body, declared=DECLARED):
+  """The declared providers that serve the model, best `uptime_last_30m` first (ties keep the
+  declared order, an unknown uptime goes last), and a snapshot of every endpoint listed."""
+  snapshot = [{"tag": e.get("tag"), "provider_name": e.get("provider_name"),
+               "status": e.get("status"), "uptime_last_5m": e.get("uptime_last_5m"),
+               "uptime_last_30m": e.get("uptime_last_30m"),
+               "uptime_last_1d": e.get("uptime_last_1d"),
+               "latency_p50_ms_30m": (e.get("latency_last_30m") or {}).get("p50")}
+              for e in body["data"]["endpoints"]]
+  served = {e["tag"]: e["uptime_last_30m"] for e in snapshot if e["tag"] in declared}
+  order = sorted((t for t in declared if t in served),
+                 key=lambda t: -(served[t] if served[t] is not None else -1))
+  return order, snapshot
+
+
+def choose(model, force_pin=None, declared=DECLARED, fetch=None):
+  """DS-I at launch: the pin, the fallbacks and the snapshot `run.json` records."""
+  model = openrouter_model(model)
+  order, snapshot = rank((fetch or fetch_endpoints)(model), declared)
+  if force_pin:
+    if force_pin not in declared:
+      raise NoProvider("--pin %r is not declared (%s)" % (force_pin, ", ".join(declared)))
+    order = [force_pin] + [t for t in order if t != force_pin]
+  if not order:
+    raise NoProvider("no declared provider (%s) serves %s" % (", ".join(declared), model))
+  return {"model": model, "declared": list(declared), "pin": order[0],
+          "fallbacks": order[1:], "forced": bool(force_pin),
+          "queried_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "endpoints": snapshot}
 
 
 class EmptyAnswer(Exception):
@@ -123,17 +244,25 @@ def ride_out(send, kind, model, provider):
 
 
 def chat(prompt, model, max_tokens, temperature):
-  """D2 + D3: the paper's chat request, through OpenRouter, pinned, ridden out."""
+  """D2 + D3: the paper's chat request, through OpenRouter, pinned, ridden out; DS-I picks the
+  provider it names."""
   client = make_client()
   model = openrouter_model(model)
-  provider = pin
-  return ride_out(lambda: client.chat.completions.create(
-    model=model,
-    messages=[{"role": "user", "content": prompt}],
-    max_tokens=max_tokens,
-    temperature=temperature,
-    extra_body={"provider": {"order": [provider], "allow_fallbacks": False}},
-  ), "chat", model, provider)
+  provider = policy.provider()
+  try:
+    response = ride_out(lambda: client.chat.completions.create(
+      model=model,
+      messages=[{"role": "user", "content": prompt}],
+      max_tokens=max_tokens,
+      temperature=temperature,
+      extra_body={"provider": {"order": [provider], "allow_fallbacks": False}},
+    ), "chat", model, provider)
+  except Failed as exc:
+    if exc.reason == "budget_spent":
+      policy.failed(provider)
+    raise
+  policy.answered(provider)
+  return response
 
 
 def embed(text, model):
