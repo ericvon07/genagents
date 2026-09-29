@@ -24,6 +24,12 @@ last five minutes fall under `min_calls_per_minute` (`throughput`); fifteen minu
 move away from the pin, the next request tries the pin again (`retry_pin`). Every move is a
 `provider_switch` event, emitted before the request that names the new provider.
 
+005-IP PL-E, PL-H: the declared providers are a map by model (`gpt-4o` and `gpt-4o-mini` are
+both served by `openai` and `azure` at one price), and `PRICES` holds each model's list price,
+by which the runner's meter prices every `call` event. `fetch_credits` reads the account's
+balance for the credit gate. A 402 (out of credits) is not ridden out: it is an `error` event,
+then a `credits_out` event, and `CreditsOut`, which stops the run.
+
 Events go through `lab.trace.emit`, to whatever sinks the run's trace opened.
 """
 import collections
@@ -49,8 +55,21 @@ FIRST_WAIT_S = 2
 MAX_WAIT_S = 120
 NOT_RETRIED = (400, 401, 402, 403)
 
-DECLARED = ("openai", "azure")  # DS-I: the providers of openai/gpt-4o-mini, same weights
+# DS-I, PL-E: each chat model's providers that serve the same weights at the same price, as
+# OpenRouter listed them on 2026-09-26 and again on 2026-09-28. `azure/swedencentral` also
+# serves gpt-4o-mini, at a higher price, and is not declared.
+DECLARED = {
+  "openai/gpt-4o-mini": ("openai", "azure"),
+  "openai/gpt-4o": ("openai", "azure"),
+}
+# PL-H: list prices in US$ per million tokens (in, out), read on OpenRouter on 2026-09-28.
+PRICES = {
+  "openai/gpt-4o-mini": (0.15, 0.60),
+  "openai/gpt-4o": (2.50, 10.00),
+  EMBEDDING_MODEL: (0.02, 0.0),
+}
 ENDPOINTS_URL = BASE_URL + "/models/%s/endpoints"
+CREDITS_URL = BASE_URL + "/credits"  # the docs ask for a management key; the lab's key reads it (2026-09-28)
 WINDOW_S = 300           # the throughput floor looks at the last five minutes
 RETRY_PIN_AFTER_S = 900  # fifteen minutes after a move, the pin is tried again
 MATERIAL_GAP = 1.0       # uptime points another provider needs to take the pin from the first declared
@@ -72,8 +91,21 @@ class Failed(Exception):
     self.cause = cause
 
 
-class NoProvider(Exception):
-  """None of the declared providers serves the model now."""
+class CreditsOut(Failed):
+  """A backend answered 402: the account is out of credits, and the run stops (PL-H)."""
+
+
+class NoProvider(ValueError):
+  """None of the declared providers serves the model now, or none is declared for it."""
+
+
+def declared_for(model):
+  """The providers declared for a chat model (PL-E); an undeclared model is refused."""
+  model = openrouter_model(model)
+  if model not in DECLARED:
+    raise NoProvider("no providers are declared for %s; declared: %s"
+                     % (model, ", ".join(sorted(DECLARED))))
+  return DECLARED[model]
 
 
 class Policy:
@@ -146,7 +178,7 @@ def fetch_endpoints(model):
     return json.load(response)
 
 
-def rank(body, declared=DECLARED):
+def rank(body, declared):
   """The declared providers that serve the model, and a snapshot of every endpoint listed.
   The first declared provider leads unless another beats its `uptime_last_30m` by
   `MATERIAL_GAP` points or more (the author's rule at the dry run: a gap of hundredths is
@@ -167,9 +199,10 @@ def rank(body, declared=DECLARED):
   return order, snapshot
 
 
-def choose(model, force_pin=None, declared=DECLARED, fetch=None):
+def choose(model, force_pin=None, declared=None, fetch=None):
   """DS-I at launch: the pin, the fallbacks and the snapshot `run.json` records."""
   model = openrouter_model(model)
+  declared = declared or declared_for(model)
   order, snapshot = rank((fetch or fetch_endpoints)(model), declared)
   if force_pin:
     if force_pin not in declared:
@@ -180,6 +213,15 @@ def choose(model, force_pin=None, declared=DECLARED, fetch=None):
   return {"model": model, "declared": list(declared), "pin": order[0],
           "fallbacks": order[1:], "forced": bool(force_pin),
           "queried_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "endpoints": snapshot}
+
+
+def fetch_credits():
+  """The account's `total_credits` and `total_usage` in US$ (PL-H's credit gate)."""
+  request = urllib.request.Request(CREDITS_URL, headers={
+    "Authorization": "Bearer %s" % settings.OPENROUTER_API_KEY, **HEADERS})
+  with urllib.request.urlopen(request, timeout=30) as response:
+    data = json.load(response)["data"]
+  return {"total_credits": data["total_credits"], "total_usage": data["total_usage"]}
 
 
 class EmptyAnswer(Exception):
@@ -234,6 +276,10 @@ def ride_out(send, kind, model, provider):
         reason = "budget_spent" if _retryable(exc) else "not_retryable"
         trace.emit("error", kind=kind, model=model, provider=provider, attempt=attempt,
                    status=_status(exc), reason=reason, error=f"{type(exc).__name__}: {exc}")
+        if _status(exc) == 402:  # PL-H: out of credits; every later request would be refused too
+          trace.emit("credits_out", kind=kind, model=model, provider=provider, status=402,
+                     error=f"{type(exc).__name__}: {exc}")
+          raise CreditsOut(reason, exc) from exc
         raise Failed(reason, exc) from exc
       backoff = FIRST_WAIT_S * 2 ** (attempt - 1)
       wait = min(_retry_after(exc) or backoff, MAX_WAIT_S)

@@ -44,14 +44,19 @@ def in_domain(kind, predicted, options, float_resp=False):
 
 
 def _cot(kind, agent_desc, questions, float_resp):
-  """The paper's predictor: its own function, its own arguments, its own output."""
+  """The paper's predictor: its own function, its own arguments, its own output.
+
+  The model is `settings.LLM_VERS` read at call time, as `PREDICTOR` is: the paper's
+  `interaction` copies it at import, and the runner's `--llm` (005-IP PL-E) sets it later.
+  With nothing set the two are the same value.
+  """
   from genagents.modules import interaction  # here, not above: interaction imports this module
   if kind == "categorical":
     output = interaction.run_gpt_generate_categorical_resp(
-               agent_desc, questions, "1", interaction.LLM_VERS)[0]
+               agent_desc, questions, "1", settings.LLM_VERS)[0]
   else:
     output = interaction.run_gpt_generate_numerical_resp(
-               agent_desc, questions, float_resp, "1", interaction.LLM_VERS)[0]
+               agent_desc, questions, float_resp, "1", settings.LLM_VERS)[0]
   responses, reasonings = output["responses"], output["reasonings"]
   # The paper's parser finds answers by regex, so a skipped question shifts every later
   # answer onto the wrong item; the record says when the count does not match.

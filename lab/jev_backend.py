@@ -24,15 +24,25 @@ The client is the SDK's, which identifies itself on every request (GT-2), with a
 timeout for a state of up to ~30k tokens. The SDK's own retries are off; `_send` retries 408, 429, 5xx, timeouts and dropped
 connections with deterministic backoff (2, 4, 8… s, `Retry-After` wins, 60 s cap, 8
 attempts), each wait a `rate_limit` event, and never retries another 4xx. A request given
-up on is an `error` event and `transport.Failed`. After ten consecutive failed batches the
-next one is refused with a `backend_down` event and `BackendDown`, without being sent; one
-answered batch resets the count.
+up on is an `error` event and `transport.Failed`; a 402 is also a `credits_out` event and
+`transport.CreditsOut`, which stops the run (005-IP PL-H). After ten consecutive failed
+batches the next one is refused with a `backend_down` event and `BackendDown`, without being
+sent; one answered batch resets the count.
+
+`jev-steps` (005-IP PL-F, `variant = "steps"`): each question's `instructions` carries the
+paper's reasoning steps for its kind, read verbatim from the chain-of-thought template
+(`categorical_resp/batch_v1.txt`, `numerical_resp/batch_v1.txt`), between the task sentence
+and the question. The state and the criteria are those of `jev`, byte for byte; `instructions`
+is the field TypeSafe's docs give a question (docs.typesafe.ai/primitives/choice, read
+2026-09-28).
 """
+import os
+import re
 import threading
 import time
 
 from lab import trace
-from lab.transport import Failed
+from lab.transport import CreditsOut, Failed
 from simulation_engine import settings
 
 MODEL = "jev-latest"
@@ -44,6 +54,9 @@ RETRIED = {408, 429}  # and every 5xx
 MAX_CHOICES = 255
 SCORE_LEVELS = 10
 DOWN_AFTER = 10
+USD_PER_MTOK = (0.042, 0.0)  # list price in, out (002-ST §6, 2026-09-26): output is free
+VARIANTS = (None, "steps")
+TEMPLATES = os.path.join(settings.LLM_PROMPT_DIR, "generative_agent", "interaction")
 
 # The paper's task sentence (numerical_resp/batch_v1.txt, categorical_resp/batch_v1.txt),
 # with "the interview transcript" named as what the state holds.
@@ -57,6 +70,7 @@ _lock = threading.Lock()
 _client = None
 _consecutive_errors = 0
 models_seen = set()  # every version a response reported; the runner writes it into run.json
+variant = None       # PL-F: "steps" for jev-steps; the runner sets it after `reset`
 
 
 class BackendDown(Exception):
@@ -81,10 +95,10 @@ def client():
 
 
 def reset():
-  """Forget the client, the error count and the models seen (a new run)."""
-  global _client, _consecutive_errors
+  """Forget the client, the error count, the models seen and the variant (a new run)."""
+  global _client, _consecutive_errors, variant
   with _lock:
-    _client, _consecutive_errors = None, 0
+    _client, _consecutive_errors, variant = None, 0, None
     models_seen.clear()
 
 
@@ -119,10 +133,23 @@ def labels(kind, options, float_resp):
   return [str(v) for v in range(int(low), int(high) + 1)]
 
 
+def steps(kind):
+  """The paper's reasoning steps for `kind`, verbatim: from "As you answer" to the last step."""
+  with open(os.path.join(TEMPLATES, f"{kind}_resp", "batch_v1.txt"), encoding="utf-8") as f:
+    text = f.read()
+  found = re.search(r"As you answer.*\n(?:Step \d\).*\n)*Step \d\)[^\n]*", text)
+  if not found:
+    raise ValueError(f"no reasoning steps in the {kind} template")
+  return found.group(0)
+
+
 def build_question(kind, item, options, float_resp):
   from typesafe_sdk import Choice, Score
   primitive = shape(kind, options, float_resp)
-  instructions = f"{TASK}\n\nQuestion: {item}"
+  if variant not in VARIANTS:
+    raise ValueError(f"variant {variant!r}; known: {VARIANTS}")
+  task = f"{TASK}\n\n{steps(kind)}" if variant == "steps" else TASK
+  instructions = f"{task}\n\nQuestion: {item}"
   if kind == "numerical":
     low, high = options[0], options[-1]
     number = "a number" if float_resp else "an integer"
@@ -168,6 +195,10 @@ def _send(state, questions):
         reason = "budget_spent" if _retryable(exc) else "not_retryable"
         trace.emit("error", kind="typed", model=MODEL, provider="typesafe", attempt=attempt,
                    status=status, reason=reason, error=f"{type(exc).__name__}: {exc}")
+        if status == 402:  # PL-H: out of credits
+          trace.emit("credits_out", kind="typed", model=MODEL, provider="typesafe", status=402,
+                     error=f"{type(exc).__name__}: {exc}")
+          raise CreditsOut(reason, exc) from exc
         raise Failed(reason, exc) from exc
       wait = min(_retry_after(exc) or FIRST_WAIT_S * 2 ** (attempt - 1), MAX_WAIT_S)
       trace.emit("rate_limit", kind="typed", model=MODEL, provider="typesafe", attempt=attempt,

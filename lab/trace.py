@@ -3,7 +3,8 @@
 The event shape is the sister lab's (System-1-Agentic-World, trace-and-manifest, 2026-09-22),
 cut to what a prediction run makes: `manifest`, `call`, `rate_limit`, `error`, `decision`,
 `provider_switch`, `backend_down`, plus `health`, the verdict of the gate before launch
-(003-IP DS-J). Smallville's `reject` and `outcome` describe actions in a world and have no
+(003-IP DS-J), and the two stops of 005-IP PL-H: `spend_cap` (the next batch could pass the
+run's cap) and `credits_out` (a backend answered 402). Smallville's `reject` and `outcome` describe actions in a world and have no
 counterpart here. A name outside `EVENTS` is refused, so a typo cannot
 write an event no reader looks for.
 
@@ -20,7 +21,7 @@ import threading
 import time
 
 EVENTS = {"manifest", "call", "rate_limit", "error", "decision", "provider_switch",
-          "backend_down", "health"}
+          "backend_down", "health", "spend_cap", "credits_out"}
 
 SINKS = []
 _bound = contextvars.ContextVar("lab_trace_bound", default={})

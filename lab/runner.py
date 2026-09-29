@@ -3,6 +3,8 @@
   cd <genagents>
   python -m lab.runner smoke-cot-a --predictor cot --population example+demographic:20 --seed 20260926
   python -m lab.runner dry-jev-a --predictor jev --population example+demographic:1 --items 8
+  python -m lab.runner gss22-cot-4o-p --predictor cot --llm gpt-4o --population built:gss22-a:10 \
+    --max-usd 5
 
 A launch, in order:
 
@@ -11,10 +13,14 @@ A launch, in order:
    refused too: there is no resumption; a crashed run is registered and relaunched under a
    new name.
 2. The population is drawn (`example`, the authors' interview agent; `demographic:N`, N
-   folders of `gss_agents/` drawn by the seed from the sorted list) and hashed; the items
-   are loaded and cut into batches (`lab.items`); the knobs are fingerprinted.
-3. For the chain-of-thought arm, the provider query (DS-I) names the pin and the
-   fallbacks, and `transport.policy` is set from them.
+   folders of `gss_agents/` drawn by the seed from the sorted list; `built:<name>[:N]`, both
+   agents of the first N respondents of a population built under `LAB_DATA`, each with its
+   own items, 005-IP PL-D) and hashed; the items are loaded and cut into batches
+   (`lab.items`), per agent; the knobs are fingerprinted.
+3. The credit gate (005-IP PL-H): the OpenRouter balance must cover the spend cap plus
+   US$0.50, or the launch is refused having written nothing. For the chain-of-thought arm,
+   the provider query (DS-I) then names the pin and the fallbacks, and `transport.policy`
+   is set from them.
 4. The health gate (DS-J): three answers in a row from the arm's backend, none more than a
    minute after the one before, and, when an agent has memories, the embedding identity
    check (DS-D) — its failure turns the direct-to-OpenAI route on, and the run says so. The
@@ -25,9 +31,11 @@ A launch, in order:
    `categorical_resp` / `numerical_resp`, so the state is built by the paper's code and the
    seam (D4) records each item. As a batch ends its items become lines of
    `predictions.jsonl`, taken from the seam's `decision` events. A failed batch is recorded
-   `ok: false` and the agent goes on; `BackendDown` stops every agent.
-7. `run.json` gains `outcome` (`finished`, `models_seen`, `stopped`). A run without
-   `outcome` crashed, and the registrar invalidates it.
+   `ok: false` and the agent goes on. Three things stop every agent: `BackendDown`, a 402
+   (`CreditsOut`), and the meter refusing a batch that could pass `--max-usd` (a
+   `spend_cap` event).
+7. `run.json` gains `outcome` (`finished`, `models_seen`, `stopped`, `spent_usd`). A run
+   without `outcome` crashed, and the registrar invalidates it.
 """
 import argparse
 import concurrent.futures
@@ -49,6 +57,10 @@ RUNS_LOCAL = os.path.join(LAB, "runs-local")
 POPULATIONS = os.path.join(FORK, "agent_bank", "populations")
 EXAMPLE = os.path.join("single_agent", "01fd7d2a-0357-4c1b-9f3e-8eade2d537ae")
 DEMOGRAPHIC = "gss_agents"
+BUILT = "built:"
+BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order (GP-C)
+VARIANTS = {"cot": (None,), "jev": (None, "steps")}
+MARGIN_USD = 0.50  # PL-H: the balance must cover the cap and this much more
 
 GATE_ANSWERS = 3
 GATE_MAX_GAP_S = 60
@@ -74,8 +86,15 @@ def sha1_file(path, h=None):
 
 # --- the population -------------------------------------------------------------
 
-def population(spec, seed, root=POPULATIONS):
-  """[(agent_id, agent_type, folder)] for `example+demographic:N`, in that order."""
+def population(spec, seed, root=POPULATIONS, built=None):
+  """[(agent_id, agent_type, folder, own)] for `example+demographic:N` or `built:<name>[:N]`.
+
+  `own` is None for an agent that answers the run's items, and the item ids `items.json`
+  holds for an agent of a built population (PL-D). A built population is not mixed with
+  other parts.
+  """
+  if spec.startswith(BUILT):
+    return built_agents(spec, built or built_root())
   agents = []
   for part in spec.split("+"):
     if part == "example":
@@ -86,22 +105,111 @@ def population(spec, seed, root=POPULATIONS):
       drawn = random.Random(seed).sample(folders, int(part.split(":", 1)[1]))
       agents += [("demographic", os.path.join(root, DEMOGRAPHIC, f)) for f in drawn]
     else:
-      raise ValueError("population part %r; known: example, demographic:N" % part)
-  return [(os.path.basename(folder), kind, folder) for kind, folder in agents]
+      raise ValueError("population part %r; known: example, demographic:N, or alone "
+                       "built:<name>[:N]" % part)
+  return [(os.path.basename(folder), kind, folder, None) for kind, folder in agents]
+
+
+def built_root(environ=None):
+  """`LAB_DATA/populations`, where the lab's builder writes (004-ST GP-J)."""
+  environ = os.environ if environ is None else environ
+  if not environ.get("LAB_DATA"):
+    raise ValueError("a built population needs LAB_DATA in the environment (<lab>/.env)")
+  return os.path.join(os.path.expanduser(environ["LAB_DATA"]), "populations")
+
+
+def built_spec(spec):
+  """(name, N or None) of `built:<name>[:N]`."""
+  name, _, n = spec[len(BUILT):].partition(":")
+  if not name or (n and not n.isdigit()):
+    raise ValueError("population %r; expected built:<name>[:N]" % spec)
+  return name, int(n) if n else None
+
+
+def built_agents(spec, root):
+  """Both agents of the first N respondents in draw order, each with its held-out items."""
+  name, n = built_spec(spec)
+  folder = os.path.join(root, name)
+  meta, own = read_json(folder, "population.json"), read_json(folder, "items.json")
+  respondents = sorted(meta["respondents"], key=lambda r: r["position"])
+  if n is not None:
+    if not 0 < n <= len(respondents):
+      raise ValueError("%s holds %d respondents, not %d" % (name, len(respondents), n))
+    respondents = respondents[:n]
+  return [(r["agents"][kind], kind, os.path.join(folder, "agents", r["agents"][kind]),
+           own[r["agents"][kind]])
+          for r in respondents for kind in BUILT_TYPES]
+
+
+def built_data(spec, root):
+  """What `data` says of a built population: its files by sha256, checked against the
+  build's own record, so a population changed after its build is refused."""
+  name, n = built_spec(spec)
+  folder = os.path.join(root, name)
+  meta = read_json(folder, "population.json")
+  files = {f: sha256_file(os.path.join(folder, f)) for f in ("items.json", "truth.jsonl")}
+  for f, digest in files.items():
+    if meta["files"].get(f) != digest:
+      raise ValueError("%s/%s is not the file its build recorded; rebuild the population"
+                       % (name, f))
+  return {"population_path": "<lab-data>/populations/%s" % name,
+          "population_json_sha256": sha256_file(os.path.join(folder, "population.json")),
+          "items_sha256": files["items.json"], "truth_sha256": files["truth.jsonl"],
+          "respondents": n if n is not None else len(meta["respondents"]),
+          "held_out": "%d scorable items per respondent, 004-ST GP-E" % meta["slice"]["k"]}
+
+
+def read_json(folder, name):
+  with open(os.path.join(folder, name), encoding="utf-8") as f:
+    return json.load(f)
+
+
+def sha256_file(path):
+  h = hashlib.sha256()
+  with open(path, "rb") as f:
+    for chunk in iter(lambda: f.read(1 << 20), b""):
+      h.update(chunk)
+  return h.hexdigest()
 
 
 def population_sha1(agents):
   h = hashlib.sha1()
-  for agent_id, _, folder in agents:
+  for agent_id, _, folder, own in agents:
     h.update(agent_id.encode() + b"\0")
     for name in ("scratch.json", "memory_stream/nodes.json", "memory_stream/embeddings.json"):
       sha1_file(os.path.join(folder, name), h)
+    if own is not None:
+      h.update(json.dumps(own).encode())
   return h.hexdigest()
+
+
+def agent_batches(agents, bank, n_items, size):
+  """{agent_id: batches}: the run's items, or the agent's own in bank order (PL-D); `n_items`
+  keeps the first N of either. An own item the bank does not hold is refused."""
+  index = {item.id: k for k, item in enumerate(bank)}
+  out = {}
+  for agent_id, _, _, own in agents:
+    if own is None:
+      chosen = bank
+    else:
+      missing = [q for q in own if q not in index]
+      if missing:
+        raise ValueError("%s is asked %s, which the run's bank does not hold"
+                         % (agent_id, ", ".join(missing)))
+      chosen = [bank[k] for k in sorted(index[q] for q in own)]
+    out[agent_id] = items.batches(chosen[:n_items], size)
+  return out
+
+
+def per_agent(counts):
+  """One count when every agent has it, else the sorted counts seen."""
+  seen = sorted(set(counts))
+  return seen[0] if len(seen) == 1 else seen
 
 
 def first_memory(agents):
   """(text, stored vector) of the first node of the first agent with memories, or None."""
-  for _, _, folder in agents:
+  for _, _, folder, _ in agents:
     with open(os.path.join(folder, "memory_stream", "nodes.json")) as f:
       nodes = json.load(f)
     if nodes:
@@ -196,6 +304,102 @@ def check_embeddings(text, stored):
   return result
 
 
+# --- the spend cap and the stop (PL-H) ------------------------------------------
+
+def prices(llm):
+  """US$ per million tokens, by `call` kind: the run's chat model, the embeddings, Jev."""
+  from lab import jev_backend, transport
+  chat, embedding = transport.PRICES[llm], transport.PRICES[transport.EMBEDDING_MODEL]
+  return {"chat": {"model": llm, "in": chat[0], "out": chat[1]},
+          "embedding": {"model": transport.EMBEDDING_MODEL, "in": embedding[0],
+                        "out": embedding[1]},
+          "typed": {"model": jev_backend.MODEL, "in": jev_backend.USD_PER_MTOK[0],
+                    "out": jev_backend.USD_PER_MTOK[1]}}
+
+
+class Meter:
+  """The run's spend at list price, and the cap's judgement (PL-H).
+
+  A trace sink: every `call` event is priced by its kind at `prices`. Before a batch starts,
+  `admit` refuses it when what was spent, plus the dearest batch so far for it and for every
+  batch still in flight, would pass `max_usd`; it then returns the figures the `spend_cap`
+  event carries. Without a cap every batch is admitted and the spend is still counted.
+  """
+
+  def __init__(self, prices, max_usd=None):
+    self.prices, self.max_usd = prices, max_usd
+    self.spent, self.dearest, self.open = 0.0, 0.0, {}
+    self._lock = threading.Lock()
+
+  def cost(self, record):
+    price = self.prices.get(record.get("kind"))
+    if price is None:
+      return 0.0
+    return ((record.get("tokens_in") or 0) * price["in"]
+            + (record.get("tokens_out") or 0) * price["out"]) / 1e6
+
+  def __call__(self, record):
+    if record["event"] != "call":
+      return
+    cost, key = self.cost(record), (record.get("agent"), record.get("batch"))
+    with self._lock:
+      self.spent += cost
+      if key in self.open:
+        self.open[key] += cost
+
+  def admit(self, agent_id, batch):
+    with self._lock:
+      if self.max_usd is not None:
+        projected = self.spent + self.dearest * (len(self.open) + 1)
+        if projected > self.max_usd:
+          return {"spent_usd": round(self.spent, 6), "projected_usd": round(projected, 6),
+                  "dearest_batch_usd": round(self.dearest, 6), "in_flight": len(self.open),
+                  "max_usd": self.max_usd}
+      self.open[(agent_id, batch)] = 0.0
+      return None
+
+  def close(self, agent_id, batch):
+    with self._lock:
+      self.dearest = max(self.dearest, self.open.pop((agent_id, batch), 0.0))
+
+
+class Stop:
+  """Why the run stopped early, set once: `backend_down`, `credits_out` or `spend_cap`."""
+
+  def __init__(self):
+    self.reason, self._lock = None, threading.Lock()
+
+  def set(self, reason):
+    """True for the first reason given; a later one is ignored."""
+    with self._lock:
+      if self.reason is None:
+        self.reason = reason
+        return True
+      return False
+
+  def is_set(self):
+    return self.reason is not None
+
+
+class CreditsShort(RuntimeError):
+  """The balance does not cover the cap plus the margin, or could not be read."""
+
+
+def credit_gate(max_usd, read):
+  """PL-H: the balance must be at least the cap plus `MARGIN_USD`; returns what run.json keeps."""
+  try:
+    credits = read()
+  except Exception as exc:
+    raise CreditsShort("could not read the OpenRouter balance: %s: %s"
+                       % (type(exc).__name__, exc)) from exc
+  balance = credits["total_credits"] - credits["total_usage"]
+  needed = (max_usd or 0) + MARGIN_USD
+  if balance < needed:
+    raise CreditsShort("the OpenRouter balance is US$%.2f; this run needs US$%.2f (a cap of "
+                       "US$%s plus US$%.2f)" % (balance, needed, max_usd, MARGIN_USD))
+  return {**credits, "balance": round(balance, 6), "needed": needed, "read_at": now_iso()}
+
+
 # --- one agent ------------------------------------------------------------------
 
 class Collector:
@@ -236,13 +440,20 @@ def records(agent_id, agent_type, b, batch, decided, error, latency_ms):
   return out
 
 
-def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop):
+def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop, meter):
   from genagents.genagents import GenerativeAgent
   from lab.jev_backend import BackendDown
+  from lab.transport import CreditsOut
   agent = GenerativeAgent(folder)
   for b, batch in enumerate(batches):
     if stop.is_set():
       return
+    with trace.bound(agent=agent_id, batch=b):
+      refused = meter.admit(agent_id, b)
+      if refused:
+        if stop.set("spend_cap"):
+          trace.emit("spend_cap", **refused)
+        return
     questions = items.questions(batch)
     error, started = None, monotonic()
     with trace.bound(agent=agent_id, batch=b):
@@ -253,9 +464,13 @@ def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop):
           agent.numerical_resp(questions, batch[0].float_resp)
       except BackendDown as exc:
         error = "%s: %s" % (type(exc).__name__, exc)
-        stop.set()
+        stop.set("backend_down")
+      except CreditsOut as exc:
+        error = "%s: %s" % (type(exc).__name__, exc)
+        stop.set("credits_out")
       except Exception as exc:
         error = "%s: %s" % (type(exc).__name__, exc)
+    meter.close(agent_id, b)
     latency_ms = round((monotonic() - started) * 1000)
     write(records(agent_id, agent_type, b, batch, collector.take(agent_id, b), error,
                   latency_ms))
@@ -270,30 +485,48 @@ class GateFailed(RuntimeError):
 def launch(name, predictor, population_spec="example+demographic:20", seed=20260926,
            instruments=items.INSTRUMENTS, n_items=None, threads=4, pin=None,
            min_calls_per_minute=None, out=RUNS_LOCAL, env_file=None, gate=health_gate,
-           choose=None):
-  """Run one arm; return the run's folder. Raises NotReady or GateFailed having written nothing."""
+           choose=None, llm=None, variant=None, max_usd=None, credits=None):
+  """Run one arm; return the run's folder. Raises NotReady, CreditsShort, GateFailed or
+  ValueError having written nothing."""
   check_ready.load_env(env_file)
   check_ready.require(predictor)
   folder = os.path.join(out, name)
   if os.path.exists(folder):
     raise FileExistsError("%s exists; a run is never resumed, relaunch under a new name" % folder)
+  if variant not in VARIANTS[predictor]:
+    raise ValueError("variant %r is not one of the %s arm's: %s"
+                     % (variant, predictor, VARIANTS[predictor]))
 
   from lab import jev_backend, transport
   from simulation_engine import settings
   settings.PREDICTOR = predictor
+  if llm:
+    settings.LLM_VERS = llm  # PL-E; the seam reads it at call time
+  chat_model = transport.openrouter_model(settings.LLM_VERS)
+  declared = transport.declared_for(chat_model)
   jev_backend.reset()
+  jev_backend.variant = variant
   transport.embeddings_direct = False
   transport.policy = transport.Policy()
 
   agents = population(population_spec, seed)
-  bank = items.load(instruments)[:n_items]
-  batches = items.batches(bank, settings.MAX_CHUNK_SIZE)
-  config = {"predictor": predictor, "llm": transport.openrouter_model(settings.LLM_VERS),
+  bank = items.load(instruments)
+  batches = agent_batches(agents, bank, n_items, settings.MAX_CHUNK_SIZE)
+  asked = [item for agent_id in batches for batch in batches[agent_id] for item in batch]
+  used = [i for i in instruments if any(item.instrument == i for item in asked)]
+  built = built_data(population_spec, built_root()) if population_spec.startswith(BUILT) else None
+  price = prices(chat_model)
+  config = {"predictor": predictor, "llm": chat_model, "variant": variant,
             "typed_model": jev_backend.MODEL, "population": population_spec, "seed": seed,
             "instruments": list(instruments), "items": n_items,
             "batch_size": settings.MAX_CHUNK_SIZE, "threads": threads,
-            "declared": list(transport.DECLARED), "pin": pin,
-            "min_calls_per_minute": min_calls_per_minute}
+            "declared": list(declared), "pin": pin,
+            "min_calls_per_minute": min_calls_per_minute, "max_usd": max_usd,
+            "prices": price}
+
+  balance = credit_gate(max_usd, credits or transport.fetch_credits)
+  log("credits: balance US$%.2f; cap %s" % (balance["balance"],
+      "US$%.2f" % max_usd if max_usd is not None else "none"))
 
   providers = None
   if predictor == "cot":
@@ -313,35 +546,45 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
   else:
     model = transport.openrouter_model(settings.LLM_VERS)
     request = {"temperature": 0.7, "max_tokens": 1500, "attempts": transport.ATTEMPTS}
+  data = {"population": population_spec,
+          "population_path": "<genagents>/agent_bank/populations",
+          "population_sha1": population_sha1(agents), "agents": len(agents),
+          "agent_ids": [a for a, _, _, _ in agents],
+          "items": {"path": "<osf>/figure2/data/question_master",
+                    "count": len({item.id for item in asked}),
+                    "sha1": items.bank_sha1(instruments),
+                    "batches": per_agent(len(b) for b in batches.values()),
+                    "batch_size": settings.MAX_CHUNK_SIZE},
+          "held_out": "nothing is scored in this run; the demographic items the scratch "
+                      "carries are the 27 the paper excludes"}
+  if built:
+    data.update(built)
+    data["items"]["per_agent"] = per_agent(sum(map(len, b)) for b in batches.values())
   run = {
     "name": name,
-    "condition": {"predictor": predictor, "model": model,
-                  "agent_type": "+".join(dict.fromkeys(t for _, t, _ in agents)),
-                  "instrument": "+".join(instruments), "prompt_version": "1",
+    "condition": {"predictor": predictor, "model": model, "variant": variant,
+                  "agent_type": "+".join(dict.fromkeys(t for _, t, _, _ in agents)),
+                  "instrument": "+".join(used), "prompt_version": "1",
                   "request": request},
     "code": code_state(),
-    "data": {"population": population_spec,
-             "population_path": "<genagents>/agent_bank/populations",
-             "population_sha1": population_sha1(agents), "agents": len(agents),
-             "agent_ids": [a for a, _, _ in agents],
-             "items": {"path": "<osf>/figure2/data/question_master", "count": len(bank),
-                       "sha1": items.bank_sha1(instruments), "batches": len(batches),
-                       "batch_size": settings.MAX_CHUNK_SIZE},
-             "held_out": "nothing is scored in this run; the demographic items the scratch "
-                         "carries are the 27 the paper excludes"},
+    "data": data,
     "seed": seed,
     "config": config,
     "config_sha1": hashlib.sha1(json.dumps(config, sort_keys=True).encode()).hexdigest(),
     "providers": providers,
     "embeddings": (verdict.get("embedding") or {}).get("route", "not used"),
     "health": verdict,
+    "credits": balance,
     "started": now_iso(),
   }
   os.makedirs(folder)
   run_path = os.path.join(folder, "run.json")
   write_json(run_path, run)
 
-  stop, collector, lock = threading.Event(), Collector(), threading.Lock()
+  stop, collector, lock = Stop(), Collector(), threading.Lock()
+  meter = Meter(price, max_usd)
+  for event in gate_events:  # the gate's requests are the run's spend too
+    meter(event)
   predictions = open(os.path.join(folder, "predictions.jsonl"), "a", encoding="utf-8")
 
   def write(lines):
@@ -353,21 +596,27 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
   with trace.Trace(os.path.join(folder, "trace.jsonl")) as t:
     for event in gate_events:
       t.write(event)
-    trace.SINKS.append(collector)
+    trace.SINKS.extend((collector, meter))
     try:
       with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as pool:
-        futures = [pool.submit(answer_agent, a, kind, f, batches, collector, write, stop)
-                   for a, kind, f in agents]
+        futures = [pool.submit(answer_agent, a, kind, f, batches[a], collector, write, stop,
+                               meter)
+                   for a, kind, f, _ in agents]
         for future in futures:
           future.result()
     finally:
       trace.SINKS.remove(collector)
+      trace.SINKS.remove(meter)
       predictions.close()
 
   run["outcome"] = {"finished": now_iso(), "models_seen": sorted(jev_backend.models_seen),
-                    "stopped": "backend_down" if stop.is_set() else None}
+                    "stopped": stop.reason, "spent_usd": round(meter.spent, 6)}
   write_json(run_path, run)
   return folder
+
+
+def log(message):
+  print(message, file=sys.stderr, flush=True)
 
 
 def write_json(path, data):
@@ -387,18 +636,26 @@ def main(argv=None):
   ap.add_argument("--threads", type=int, default=4)
   ap.add_argument("--pin", default=None, help="force the chat provider instead of the query's best")
   ap.add_argument("--min-calls-per-minute", type=float, default=None)
+  ap.add_argument("--llm", default=None, choices=("gpt-4o-mini", "gpt-4o"),
+                  help="the chain-of-thought model (default: LLM_VERS, gpt-4o-mini)")
+  ap.add_argument("--variant", default=None, choices=("steps",),
+                  help="jev only: steps is jev-steps, the paper's reasoning steps in the instruction")
+  ap.add_argument("--max-usd", type=float, default=None,
+                  help="the run's spend cap at list price; the balance must cover it plus US$0.50")
   ap.add_argument("--out", default=RUNS_LOCAL)
   args = ap.parse_args(argv)
   try:
     folder = launch(args.name, args.predictor, args.population, args.seed,
                     tuple(args.instruments.split(",")), args.items, args.threads, args.pin,
-                    args.min_calls_per_minute, args.out)
-  except (check_ready.NotReady, GateFailed, FileExistsError) as exc:
+                    args.min_calls_per_minute, args.out, llm=args.llm, variant=args.variant,
+                    max_usd=args.max_usd)
+  except (check_ready.NotReady, CreditsShort, GateFailed, FileExistsError, ValueError) as exc:
     sys.exit("not launched: %s" % exc)
   with open(os.path.join(folder, "run.json")) as f:
     outcome = json.load(f)["outcome"]
-  print("%s: finished %s%s" % (folder, outcome["finished"],
-                               ", STOPPED: %s" % outcome["stopped"] if outcome["stopped"] else ""))
+  print("%s: finished %s, US$%.4f at list price%s"
+        % (folder, outcome["finished"], outcome["spent_usd"],
+           ", STOPPED: %s" % outcome["stopped"] if outcome["stopped"] else ""))
 
 
 if __name__ == "__main__":
