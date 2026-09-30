@@ -573,8 +573,8 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
                     "sha1": items.bank_sha1(instruments),
                     "batches": per_agent(len(b) for b in batches.values()),
                     "batch_size": settings.MAX_CHUNK_SIZE},
-          "held_out": "nothing is scored in this run; the demographic items the scratch "
-                      "carries are the 27 the paper excludes"}
+          "held_out": "nothing is scored in this run; the 27 items the paper excludes for "
+                      "overlapping its interview are not asked"}
   if built:
     data.update(built)
     data["items"]["per_agent"] = per_agent(sum(map(len, b)) for b in batches.values())
