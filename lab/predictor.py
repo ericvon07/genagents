@@ -61,6 +61,12 @@ def _cot(kind, agent_desc, questions, float_resp):
   # The paper's parser finds answers by regex, so a skipped question shifts every later
   # answer onto the wrong item; the record says when the count does not match.
   aligned = len(responses) == len(questions)
+  if not aligned:
+    # 011-F7: the reply itself, so a run can say why it parsed short (the cap, a refusal,
+    # another shape); the records are written as before
+    from lab import transport
+    trace.emit("unaligned", questions=len(questions), answers=len(responses),
+               reply=transport.last_reply())
   items = [{"predicted": responses[i] if i < len(responses) else None,
             "reasoning": reasonings[i] if i < len(reasonings) else None,
             "aligned": aligned}

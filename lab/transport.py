@@ -262,8 +262,9 @@ def _retryable(exc):
   return False
 
 
-def ride_out(send, kind, model, provider):
-  """Call `send()` until it answers, waiting out what a later attempt can cure."""
+def ride_out(send, kind, model, provider, **request):
+  """Call `send()` until it answers, waiting out what a later attempt can cure. `request`
+  (a chat's `max_tokens` and `temperature`) goes into the `call` event as sent (011-F7)."""
   for attempt in range(1, ATTEMPTS + 1):
     started = monotonic()
     try:
@@ -288,12 +289,28 @@ def ride_out(send, kind, model, provider):
       sleep(wait)
       continue
     usage = getattr(response, "usage", None)
+    fields = dict(request)
+    if kind == "chat":
+      # 011-F7: why the reply stopped ("length" is the cap), which build answered, and the
+      # reply's text for the seam, which keeps it when the paper's parser finds too few answers
+      choice = response.choices[0]
+      fields["finish_reason"] = getattr(choice, "finish_reason", None)
+      fields["fingerprint"] = getattr(response, "system_fingerprint", None)
+      _last.reply = getattr(getattr(choice, "message", None), "content", None)
     trace.emit("call", kind=kind, model=getattr(response, "model", None) or model,
                provider=getattr(response, "provider", None) or provider, attempt=attempt,
                latency_ms=round((monotonic() - started) * 1000),
                tokens_in=getattr(usage, "prompt_tokens", None),
-               tokens_out=getattr(usage, "completion_tokens", None))
+               tokens_out=getattr(usage, "completion_tokens", None), **fields)
     return response
+
+
+_last = threading.local()
+
+
+def last_reply():
+  """The text of this thread's last chat reply, or None."""
+  return getattr(_last, "reply", None)
 
 
 def chat(prompt, model, max_tokens, temperature):
@@ -309,7 +326,7 @@ def chat(prompt, model, max_tokens, temperature):
       max_tokens=max_tokens,
       temperature=temperature,
       extra_body={"provider": {"order": [provider], "allow_fallbacks": False}},
-    ), "chat", model, provider)
+    ), "chat", model, provider, max_tokens=max_tokens, temperature=temperature)
   except Failed as exc:
     if exc.reason == "budget_spent":
       policy.failed(provider)

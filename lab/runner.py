@@ -44,6 +44,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import subprocess
 import sys
 import threading
@@ -52,6 +53,22 @@ import time
 from lab import check_ready, items, trace
 
 FORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def newest(models):
+  """The latest version among `models` ("jev-1.13.0" after "jev-1.9.0"), or None (011-F7)."""
+  def key(model):
+    return [(0, int(part)) if part.isdigit() else (1, part)
+            for part in re.split(r"[.\-]", model)]
+  return max(models, key=key) if models else None
+
+
+def paper_max_tokens():
+  """The cap the paper's `gpt_request` sends, read from its signature rather than retyped, so
+  `run.json` and the readout's cut count follow the code (011-F7)."""
+  import inspect
+  from simulation_engine.gpt_structure import gpt_request
+  return inspect.signature(gpt_request).parameters["max_tokens"].default
 LAB = os.path.dirname(FORK)
 RUNS_LOCAL = os.path.join(LAB, "runs-local")
 POPULATIONS = os.path.join(FORK, "agent_bank", "populations")
@@ -540,12 +557,13 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
     raise GateFailed("health gate: %s" % verdict.get("error", verdict))
 
   if predictor == "jev":
-    model = sorted(jev_backend.models_seen)[-1] if jev_backend.models_seen else None
+    model = newest(jev_backend.models_seen)
     request = {"asked": jev_backend.MODEL, "timeout_s": jev_backend.TIMEOUT_S,
                "attempts": jev_backend.ATTEMPTS, "score_levels": jev_backend.SCORE_LEVELS}
   else:
     model = transport.openrouter_model(settings.LLM_VERS)
-    request = {"temperature": 0.7, "max_tokens": 1500, "attempts": transport.ATTEMPTS}
+    request = {"temperature": 0.7, "max_tokens": paper_max_tokens(),
+               "attempts": transport.ATTEMPTS}
   data = {"population": population_spec,
           "population_path": "<genagents>/agent_bank/populations",
           "population_sha1": population_sha1(agents), "agents": len(agents),

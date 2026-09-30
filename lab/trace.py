@@ -21,7 +21,7 @@ import threading
 import time
 
 EVENTS = {"manifest", "call", "rate_limit", "error", "decision", "provider_switch",
-          "backend_down", "health", "spend_cap", "credits_out"}
+          "backend_down", "health", "spend_cap", "credits_out", "unaligned"}
 
 SINKS = []
 _bound = contextvars.ContextVar("lab_trace_bound", default={})
