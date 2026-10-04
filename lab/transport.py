@@ -16,7 +16,8 @@ retries are off, so every wait the run makes is one this module recorded.
 
 DS-I, the provider policy: `choose` asks OpenRouter which endpoints serve the model and
 ranks the declared candidates (`openai`, `azure`, the two that serve `gpt-4o-mini` with the
-same weights) by `uptime_last_30m`; the best is the pin unless one is forced, the rest are
+same weights; for `gemma-4-31b-it`, 012-IP GM-B, `friendli`, `crusoe/bf16`, `novita/bf16`)
+by `uptime_last_30m`; the best is the pin unless one is forced, the rest are
 the fallbacks, and every endpoint's snapshot goes into `run.json`. `policy` then names the
 provider of each chat request. It moves to the next declared provider when a request spent
 its whole ride-out budget on the current one (`fallback`), or when answered calls over the
@@ -25,7 +26,7 @@ move away from the pin, the next request tries the pin again (`retry_pin`). Ever
 `provider_switch` event, emitted before the request that names the new provider.
 
 005-IP PL-E, PL-H: the declared providers are a map by model (`gpt-4o` and `gpt-4o-mini` are
-both served by `openai` and `azure` at one price), and `PRICES` holds each model's list price,
+both served by `openai` and `azure` at one price; `google/gemma-4-31b-it` by three, 012-IP), and `PRICES` holds each model's list price,
 by which the runner's meter prices every `call` event. `fetch_credits` reads the account's
 balance for the credit gate. A 402 (out of credits) is not ridden out: it is an `error` event,
 then a `credits_out` event, and `CreditsOut`, which stops the run.
@@ -57,15 +58,20 @@ NOT_RETRIED = (400, 401, 402, 403)
 
 # DS-I, PL-E: each chat model's providers that serve the same weights at the same price, as
 # OpenRouter listed them on 2026-09-26 and again on 2026-09-28. `azure/swedencentral` also
-# serves gpt-4o-mini, at a higher price, and is not declared.
+# serves gpt-4o-mini, at a higher price, and is not declared. 012-IP GM-B: gemma-4-31b-it's
+# three endpoints at US$0.14 / US$0.40 on 2026-10-04, Friendli first (the sister lab's), then
+# the two that serve bf16; the cheaper endpoints serve fp4 or do not say, and are not declared.
 DECLARED = {
   "openai/gpt-4o-mini": ("openai", "azure"),
   "openai/gpt-4o": ("openai", "azure"),
+  "google/gemma-4-31b-it": ("friendli", "crusoe/bf16", "novita/bf16"),
 }
-# PL-H: list prices in US$ per million tokens (in, out), read on OpenRouter on 2026-09-28.
+# PL-H: list prices in US$ per million tokens (in, out), read on OpenRouter on 2026-09-28,
+# and gemma-4-31b-it's on 2026-10-04.
 PRICES = {
   "openai/gpt-4o-mini": (0.15, 0.60),
   "openai/gpt-4o": (2.50, 10.00),
+  "google/gemma-4-31b-it": (0.14, 0.40),
   EMBEDDING_MODEL: (0.02, 0.0),
 }
 ENDPOINTS_URL = BASE_URL + "/models/%s/endpoints"

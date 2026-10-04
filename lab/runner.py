@@ -80,10 +80,14 @@ DEMOGRAPHIC = "gss_agents"
 BUILT = "built:"
 BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order (GP-C)
 VARIANTS = {"cot": (None,), "jev": (None, "steps")}
+# The chain-of-thought models a run may name: the paper's, the published code's default, and
+# 012-IP's cheap open one (GM-B), each declared with its providers and price in `transport`.
+LLMS = ("gpt-4o-mini", "gpt-4o", "google/gemma-4-31b-it")
 UNNAMED_MODEL = (
-  "a cot run must name its chain-of-thought model: pass --llm gpt-4o (the paper's model) or "
-  "--llm gpt-4o-mini, or set LLM_VERS. Unnamed, the published code's default, gpt-4o-mini, "
-  "would answer, and run.json would look as clean as a gpt-4o run's")
+  "a cot run must name its chain-of-thought model: pass --llm gpt-4o (the paper's model), "
+  "--llm gpt-4o-mini or --llm google/gemma-4-31b-it, or set LLM_VERS. Unnamed, the published "
+  "code's default, gpt-4o-mini, would answer, and run.json would look as clean as a gpt-4o "
+  "run's")
 MARGIN_USD = 0.50  # PL-H: the balance must cover the cap and this much more
 
 GATE_ANSWERS = 3
@@ -663,7 +667,7 @@ def main(argv=None):
   ap.add_argument("--threads", type=int, default=4)
   ap.add_argument("--pin", default=None, help="force the chat provider instead of the query's best")
   ap.add_argument("--min-calls-per-minute", type=float, default=None)
-  ap.add_argument("--llm", default=None, choices=("gpt-4o-mini", "gpt-4o"),
+  ap.add_argument("--llm", default=None, choices=LLMS,
                   help="the chain-of-thought model; a cot run must name it here or in LLM_VERS")
   ap.add_argument("--variant", default=None, choices=("steps",),
                   help="jev only: steps is jev-steps, the paper's reasoning steps in the instruction")
