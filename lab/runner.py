@@ -1,7 +1,8 @@
 """The runner: one arm over a population and the item bank, into runs-local/<name>/ (003-IP DS-H).
 
   cd <genagents>
-  python -m lab.runner smoke-cot-a --predictor cot --population example+demographic:20 --seed 20260926
+  python -m lab.runner smoke-cot-a --predictor cot --llm gpt-4o-mini --population example+demographic:20 \
+    --seed 20260926
   python -m lab.runner dry-jev-a --predictor jev --population example+demographic:1 --items 8
   python -m lab.runner gss22-cot-4o-p --predictor cot --llm gpt-4o --population built:gss22-a:10 \
     --max-usd 5
@@ -11,7 +12,9 @@ A launch, in order:
 1. `<lab>/.env` is loaded and `check_ready.require` refuses a predictor whose keys are
    missing, before anything exists under runs-local/ (S8.1). An existing run folder is
    refused too: there is no resumption; a crashed run is registered and relaunched under a
-   new name.
+   new name. So is a `cot` run whose model is not named (`--llm` or `LLM_VERS`): the
+   published default is `gpt-4o-mini`, the paper's model `gpt-4o`, and a run that fell to
+   the default would say so only in its model field.
 2. The population is drawn (`example`, the authors' interview agent; `demographic:N`, N
    folders of `gss_agents/` drawn by the seed from the sorted list; `built:<name>[:N]`, both
    agents of the first N respondents of a population built under `LAB_DATA`, each with its
@@ -77,6 +80,10 @@ DEMOGRAPHIC = "gss_agents"
 BUILT = "built:"
 BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order (GP-C)
 VARIANTS = {"cot": (None,), "jev": (None, "steps")}
+UNNAMED_MODEL = (
+  "a cot run must name its chain-of-thought model: pass --llm gpt-4o (the paper's model) or "
+  "--llm gpt-4o-mini, or set LLM_VERS. Unnamed, the published code's default, gpt-4o-mini, "
+  "would answer, and run.json would look as clean as a gpt-4o run's")
 MARGIN_USD = 0.50  # PL-H: the balance must cover the cap and this much more
 
 GATE_ANSWERS = 3
@@ -513,6 +520,8 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
   if variant not in VARIANTS[predictor]:
     raise ValueError("variant %r is not one of the %s arm's: %s"
                      % (variant, predictor, VARIANTS[predictor]))
+  if predictor == "cot" and not (llm or os.environ.get("LLM_VERS")):
+    raise ValueError(UNNAMED_MODEL)
 
   from lab import jev_backend, transport
   from simulation_engine import settings
@@ -655,7 +664,7 @@ def main(argv=None):
   ap.add_argument("--pin", default=None, help="force the chat provider instead of the query's best")
   ap.add_argument("--min-calls-per-minute", type=float, default=None)
   ap.add_argument("--llm", default=None, choices=("gpt-4o-mini", "gpt-4o"),
-                  help="the chain-of-thought model (default: LLM_VERS, gpt-4o-mini)")
+                  help="the chain-of-thought model; a cot run must name it here or in LLM_VERS")
   ap.add_argument("--variant", default=None, choices=("steps",),
                   help="jev only: steps is jev-steps, the paper's reasoning steps in the instruction")
   ap.add_argument("--max-usd", type=float, default=None,
