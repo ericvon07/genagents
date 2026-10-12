@@ -32,7 +32,10 @@ A launch, in order:
    trace's first lines — all before the first request of the run (S5.1, S8.2).
 6. Agents are answered in threads, each its batches in bank order through the paper's
    `categorical_resp` / `numerical_resp`, so the state is built by the paper's code and the
-   seam (D4) records each item. As a batch ends its items become lines of
+   seam (D4) records each item. On a built population with `withhold.json` (010-IP WB-C),
+   each item is asked alone, by an agent whose memory stream lacks that item's withheld
+   nodes for that call only; such a population is refused at any batch size but one,
+   before the credit gate. As a batch ends its items become lines of
    `predictions.jsonl`, taken from the seam's `decision` events. A failed batch is recorded
    `ok: false` and the agent goes on. Three things stop every agent: `BackendDown`, a 402
    (`CreditsOut`), and the meter refusing a batch that could pass `--max-usd` (a
@@ -42,6 +45,7 @@ A launch, in order:
 """
 import argparse
 import concurrent.futures
+import copy
 import datetime
 import hashlib
 import json
@@ -79,6 +83,7 @@ EXAMPLE = os.path.join("single_agent", "01fd7d2a-0357-4c1b-9f3e-8eade2d537ae")
 DEMOGRAPHIC = "gss_agents"
 BUILT = "built:"
 BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order (GP-C)
+WITHHOLD = "withhold.json"  # 010-IP WB-C: the nodes withheld per agent and held-out item
 VARIANTS = {"cot": (None,), "jev": (None, "steps")}
 # The chain-of-thought models a run may name: the paper's, the published code's default, and
 # 012-IP's cheap open one (GM-B), each declared with its providers and price in `transport`.
@@ -180,11 +185,50 @@ def built_data(spec, root):
     if meta["files"].get(f) != digest:
       raise ValueError("%s/%s is not the file its build recorded; rebuild the population"
                        % (name, f))
-  return {"population_path": "<lab-data>/populations/%s" % name,
+  data = {"population_path": "<lab-data>/populations/%s" % name,
           "population_json_sha256": sha256_file(os.path.join(folder, "population.json")),
           "items_sha256": files["items.json"], "truth_sha256": files["truth.jsonl"],
           "respondents": n if n is not None else len(meta["respondents"]),
           "held_out": "%d scorable items per respondent, 004-ST GP-E" % meta["slice"]["k"]}
+  if os.path.isfile(os.path.join(folder, WITHHOLD)):
+    digest = sha256_file(os.path.join(folder, WITHHOLD))
+    if meta["files"].get(WITHHOLD) != digest:
+      raise ValueError("%s/%s is not the file its build recorded; rebuild the population"
+                       % (name, WITHHOLD))
+    data["withhold_sha256"] = digest
+  return data
+
+
+def built_withhold(spec, root):
+  """{agent_id: {item_id: [node_id]}} of a built population with `withhold.json`, else None
+  (010-IP WB-C)."""
+  if not spec.startswith(BUILT):
+    return None
+  path = os.path.join(root, built_spec(spec)[0], WITHHOLD)
+  if not os.path.isfile(path):
+    return None
+  with open(path, encoding="utf-8") as f:
+    return json.load(f)
+
+
+def withholding(agent, node_ids):
+  """`agent` itself when nothing is withheld, else a shallow copy whose memory stream lacks
+  the nodes `node_ids`, for one item (010-IP WB-C). The nodes kept are the agent's own, in
+  its order; the agent is untouched, so the next item sees its whole stream again."""
+  if not node_ids:
+    return agent
+  from genagents.modules.memory_stream import MemoryStream
+  stream, gone = agent.memory_stream, set(node_ids)
+  missing = gone - set(stream.id_to_node)
+  if missing:
+    raise ValueError("withheld nodes %s are not in the agent's memory stream" % sorted(missing))
+  view = copy.copy(agent)
+  view.memory_stream = MemoryStream([], stream.embeddings)
+  for node in stream.seq_nodes:
+    if node.node_id not in gone:
+      view.memory_stream.seq_nodes.append(node)
+      view.memory_stream.id_to_node[node.node_id] = node
+  return view
 
 
 def read_json(folder, name):
@@ -450,7 +494,7 @@ KEPT = ("ok", "error", "predicted", "in_domain", "primitive", "confidence", "mod
         "reasoning", "aligned", "state_sha1", "predictor")
 
 
-def records(agent_id, agent_type, b, batch, decided, error, latency_ms):
+def records(agent_id, agent_type, b, batch, decided, error, latency_ms, withheld=None):
   out = []
   for position, item in enumerate(batch):
     d = decided.get(position)
@@ -463,17 +507,28 @@ def records(agent_id, agent_type, b, batch, decided, error, latency_ms):
     else:
       r.update({k: d[k] for k in KEPT if k in d})
     r["p"] = d.get("distribution") if d else None
+    if withheld is not None:
+      r["withheld"] = withheld  # the nodes withheld for this item (010-IP WB-C)
     r.update(fail_safe=False, latency_ms=latency_ms, ts=now_iso())
     out.append(r)
   return out
 
 
-def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop, meter):
+def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop, meter,
+                 withhold=None):
+  """Answer one agent's batches in order. With `withhold` ({item_id: [node_id]}, 010-IP
+  WB-C), every batch is one item, asked with that item's nodes out of the memory stream."""
   from genagents.genagents import GenerativeAgent
   from lab.jev_backend import BackendDown
   from lab.transport import CreditsOut
-  agent = GenerativeAgent(folder)
+  whole = GenerativeAgent(folder)
   for b, batch in enumerate(batches):
+    gone = None
+    if withhold is not None:
+      gone = withhold.get(batch[0].id) or []
+      agent = withholding(whole, gone)
+    else:
+      agent = whole
     if stop.is_set():
       return
     with trace.bound(agent=agent_id, batch=b):
@@ -501,7 +556,7 @@ def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop, 
     meter.close(agent_id, b)
     latency_ms = round((monotonic() - started) * 1000)
     write(records(agent_id, agent_type, b, batch, collector.take(agent_id, b), error,
-                  latency_ms))
+                  latency_ms, None if gone is None else len(gone)))
 
 
 # --- the launch -----------------------------------------------------------------
@@ -542,6 +597,11 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
   agents = population(population_spec, seed)
   bank = items.load(instruments)
   batches = agent_batches(agents, bank, n_items, settings.MAX_CHUNK_SIZE)
+  withhold = built_withhold(population_spec, built_root()) if population_spec.startswith(BUILT) else None
+  if withhold is not None and settings.MAX_CHUNK_SIZE != 1:
+    raise ValueError("%s withholds each item's family, so each item is asked alone: set "
+                     "MAX_CHUNK_SIZE=1, not %s (010-IP WB-C)"
+                     % (population_spec, settings.MAX_CHUNK_SIZE))
   asked = [item for agent_id in batches for batch in batches[agent_id] for item in batch]
   used = [i for i in instruments if any(item.instrument == i for item in asked)]
   built = built_data(population_spec, built_root()) if population_spec.startswith(BUILT) else None
@@ -589,8 +649,11 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
           "held_out": "nothing is scored in this run; the 27 items the paper excludes for "
                       "overlapping its interview are not asked"}
   if built:
+    withhold_sha256 = built.pop("withhold_sha256", None)
     data.update(built)
     data["items"]["per_agent"] = per_agent(sum(map(len, b)) for b in batches.values())
+    if withhold_sha256:
+      data["items"]["withhold_sha256"] = withhold_sha256  # beside batch_size (WB-C)
   run = {
     "name": name,
     "condition": {"predictor": predictor, "model": model, "variant": variant,
@@ -631,7 +694,7 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
     try:
       with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as pool:
         futures = [pool.submit(answer_agent, a, kind, f, batches[a], collector, write, stop,
-                               meter)
+                               meter, None if withhold is None else withhold.get(a, {}))
                    for a, kind, f, _ in agents]
         for future in futures:
           future.result()
