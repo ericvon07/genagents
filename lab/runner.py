@@ -18,8 +18,9 @@ A launch, in order:
 2. The population is drawn (`example`, the authors' interview agent; `demographic:N`, N
    folders of `gss_agents/` drawn by the seed from the sorted list; `built:<name>[:N]`, both
    agents of the first N respondents of a population built under `LAB_DATA`, each with its
-   own items, 005-IP PL-D) and hashed; the items are loaded and cut into batches
-   (`lab.items`), per agent; the knobs are fingerprinted.
+   own items, 005-IP PL-D, or one agent of each with `--agents survey|demographic`, 013-IP
+   MC-D) and hashed; the items are loaded and cut into batches (`lab.items`), per agent;
+   the knobs are fingerprinted.
 3. The credit gate (005-IP PL-H): the OpenRouter balance must cover the spend cap plus
    US$0.50, or the launch is refused having written nothing. For the chain-of-thought arm,
    the provider query (DS-I) then names the pin and the fallbacks, and `transport.policy`
@@ -35,7 +36,10 @@ A launch, in order:
    seam (D4) records each item. On a built population with `withhold.json` (010-IP WB-C),
    each item is asked alone, by an agent whose memory stream lacks that item's withheld
    nodes for that call only; such a population is refused at any batch size but one,
-   before the credit gate. As a batch ends its items become lines of
+   before the credit gate. A population with several maps (013-IP MC-C: `withhold.json`
+   for every answer, `withhold-k10.json`, `withhold-k30.json`) is refused unless
+   `--withhold <level>` names one of them (MC-D). `--variant direct` on the `cot` arm is
+   D5 (MC-F): one categorical item a call, refused otherwise before the credit gate. As a batch ends its items become lines of
    `predictions.jsonl`, taken from the seam's `decision` events. A failed batch is recorded
    `ok: false` and the agent goes on. Three things stop every agent: `BackendDown`, a 402
    (`CreditsOut`), and the meter refusing a batch that could pass `--max-usd` (a
@@ -84,7 +88,7 @@ DEMOGRAPHIC = "gss_agents"
 BUILT = "built:"
 BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order (GP-C)
 WITHHOLD = "withhold.json"  # 010-IP WB-C: the nodes withheld per agent and held-out item
-VARIANTS = {"cot": (None,), "jev": (None, "steps")}
+VARIANTS = {"cot": (None, "direct"), "jev": (None, "steps")}
 # The chain-of-thought models a run may name: the paper's, the published code's default, and
 # 012-IP's cheap open one (GM-B), each declared with its providers and price in `transport`.
 LLMS = ("gpt-4o-mini", "gpt-4o", "google/gemma-4-31b-it")
@@ -119,15 +123,19 @@ def sha1_file(path, h=None):
 
 # --- the population -------------------------------------------------------------
 
-def population(spec, seed, root=POPULATIONS, built=None):
+def population(spec, seed, root=POPULATIONS, built=None, kinds=None):
   """[(agent_id, agent_type, folder, own)] for `example+demographic:N` or `built:<name>[:N]`.
 
   `own` is None for an agent that answers the run's items, and the item ids `items.json`
   holds for an agent of a built population (PL-D). A built population is not mixed with
-  other parts.
+  other parts. `kinds`, one agent type or None for both, is a built population's only
+  (013-IP MC-D).
   """
   if spec.startswith(BUILT):
-    return built_agents(spec, built or built_root())
+    return built_agents(spec, built or built_root(), kinds)
+  if kinds is not None:
+    raise ValueError("--agents %s picks agents of a built population, not of %s"
+                     % (kinds, spec))
   agents = []
   for part in spec.split("+"):
     if part == "example":
@@ -159,8 +167,12 @@ def built_spec(spec):
   return name, int(n) if n else None
 
 
-def built_agents(spec, root):
-  """Both agents of the first N respondents in draw order, each with its held-out items."""
+def built_agents(spec, root, kinds=None):
+  """Both agents of the first N respondents in draw order, each with its held-out items; with
+  `kinds` ("survey" or "demographic"), that agent of each only (013-IP MC-D)."""
+  if kinds is not None and kinds not in BUILT_TYPES:
+    raise ValueError("--agents %r: a built population's agents are %s"
+                     % (kinds, " or ".join(BUILT_TYPES)))
   name, n = built_spec(spec)
   folder = os.path.join(root, name)
   meta, own = read_json(folder, "population.json"), read_json(folder, "items.json")
@@ -171,12 +183,13 @@ def built_agents(spec, root):
     respondents = respondents[:n]
   return [(r["agents"][kind], kind, os.path.join(folder, "agents", r["agents"][kind]),
            own[r["agents"][kind]])
-          for r in respondents for kind in BUILT_TYPES]
+          for r in respondents for kind in BUILT_TYPES if kinds in (None, kind)]
 
 
-def built_data(spec, root):
+def built_data(spec, root, level=None):
   """What `data` says of a built population: its files by sha256, checked against the
-  build's own record, so a population changed after its build is refused."""
+  build's own record, so a population changed after its build is refused. The map is the
+  one `level` names (013-IP MC-D), else `withhold.json`."""
   name, n = built_spec(spec)
   folder = os.path.join(root, name)
   meta = read_json(folder, "population.json")
@@ -190,24 +203,53 @@ def built_data(spec, root):
           "items_sha256": files["items.json"], "truth_sha256": files["truth.jsonl"],
           "respondents": n if n is not None else len(meta["respondents"]),
           "held_out": "%d scorable items per respondent, 004-ST GP-E" % meta["slice"]["k"]}
-  if os.path.isfile(os.path.join(folder, WITHHOLD)):
-    digest = sha256_file(os.path.join(folder, WITHHOLD))
-    if meta["files"].get(WITHHOLD) != digest:
+  chosen = withhold_file(folder, meta, level)
+  if chosen:
+    digest = sha256_file(os.path.join(folder, chosen))
+    if meta["files"].get(chosen) != digest:
       raise ValueError("%s/%s is not the file its build recorded; rebuild the population"
-                       % (name, WITHHOLD))
+                       % (name, chosen))
     data["withhold_sha256"] = digest
+    if level is not None:
+      data["withhold_level"] = level
   return data
 
 
-def built_withhold(spec, root):
-  """{agent_id: {item_id: [node_id]}} of a built population with `withhold.json`, else None
-  (010-IP WB-C)."""
+def withhold_file(folder, meta, level=None):
+  """The map a run of this population reads, or None (010-IP WB-C, 013-IP MC-D).
+
+  A population whose build lists several maps in `population.json`'s `maps` ({level: file})
+  must be named one with `--withhold <level>`; one with `withhold.json` alone takes it and
+  no level; one with no map takes no level either."""
+  maps = meta.get("maps")
+  name = meta.get("name") or os.path.basename(folder.rstrip(os.sep))
+  if maps:
+    if level is None:
+      raise ValueError("%s holds one map per level (%s): name one with --withhold "
+                       "(013-IP MC-D)" % (name, ", ".join(maps)))
+    if level not in maps:
+      raise ValueError("--withhold %s: %s's levels are %s" % (level, name, ", ".join(maps)))
+    return maps[level]
+  if level is not None:
+    raise ValueError("--withhold %s: %s holds %s, so there is no level to name"
+                     % (level, name, "one map, %s" % WITHHOLD
+                        if os.path.isfile(os.path.join(folder, WITHHOLD)) else "no map"))
+  return WITHHOLD if os.path.isfile(os.path.join(folder, WITHHOLD)) else None
+
+
+def built_withhold(spec, root, level=None):
+  """{agent_id: {item_id: [node_id]}} of a built population's map, else None (010-IP WB-C);
+  `level` names the map of a population with several (013-IP MC-D)."""
   if not spec.startswith(BUILT):
+    if level is not None:
+      raise ValueError("--withhold %s names a map of a built population, not of %s"
+                       % (level, spec))
     return None
-  path = os.path.join(root, built_spec(spec)[0], WITHHOLD)
-  if not os.path.isfile(path):
+  folder = os.path.join(root, built_spec(spec)[0])
+  chosen = withhold_file(folder, read_json(folder, "population.json"), level)
+  if chosen is None:
     return None
-  with open(path, encoding="utf-8") as f:
+  with open(os.path.join(folder, chosen), encoding="utf-8") as f:
     return json.load(f)
 
 
@@ -568,7 +610,8 @@ class GateFailed(RuntimeError):
 def launch(name, predictor, population_spec="example+demographic:20", seed=20260926,
            instruments=items.INSTRUMENTS, n_items=None, threads=4, pin=None,
            min_calls_per_minute=None, out=RUNS_LOCAL, env_file=None, gate=health_gate,
-           choose=None, llm=None, variant=None, max_usd=None, credits=None):
+           choose=None, llm=None, variant=None, max_usd=None, credits=None, level=None,
+           kinds=None):
   """Run one arm; return the run's folder. Raises NotReady, CreditsShort, GateFailed or
   ValueError having written nothing."""
   check_ready.load_env(env_file)
@@ -583,6 +626,7 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
     raise ValueError(UNNAMED_MODEL)
 
   from lab import jev_backend, transport
+  from lab import predictor as seam
   from simulation_engine import settings
   settings.PREDICTOR = predictor
   if llm:
@@ -590,21 +634,32 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
   chat_model = transport.openrouter_model(settings.LLM_VERS)
   declared = transport.declared_for(chat_model)
   jev_backend.reset()
-  jev_backend.variant = variant
+  jev_backend.variant = variant if predictor == "jev" else None
+  seam.variant = variant if predictor == "cot" else None  # D5 (013-IP MC-F)
   transport.embeddings_direct = False
   transport.policy = transport.Policy()
 
-  agents = population(population_spec, seed)
+  agents = population(population_spec, seed, kinds=kinds)
   bank = items.load(instruments)
   batches = agent_batches(agents, bank, n_items, settings.MAX_CHUNK_SIZE)
-  withhold = built_withhold(population_spec, built_root()) if population_spec.startswith(BUILT) else None
+  withhold = (built_withhold(population_spec, built_root(), level)
+              if population_spec.startswith(BUILT) or level is not None else None)
   if withhold is not None and settings.MAX_CHUNK_SIZE != 1:
     raise ValueError("%s withholds each item's family, so each item is asked alone: set "
                      "MAX_CHUNK_SIZE=1, not %s (010-IP WB-C)"
                      % (population_spec, settings.MAX_CHUNK_SIZE))
   asked = [item for agent_id in batches for batch in batches[agent_id] for item in batch]
+  if variant == seam.DIRECT:
+    if settings.MAX_CHUNK_SIZE != 1:
+      raise ValueError("--variant direct asks one item a call: set MAX_CHUNK_SIZE=1, not %s "
+                       "(013-IP MC-F)" % settings.MAX_CHUNK_SIZE)
+    numerical = sorted({item.id for item in asked if item.kind != "categorical"})
+    if numerical:
+      raise ValueError("--variant direct is categorical only, and %s are not (013-IP MC-F)"
+                       % ", ".join(numerical[:3]))
   used = [i for i in instruments if any(item.instrument == i for item in asked)]
-  built = built_data(population_spec, built_root()) if population_spec.startswith(BUILT) else None
+  built = (built_data(population_spec, built_root(), level)
+           if population_spec.startswith(BUILT) else None)
   price = prices(chat_model)
   config = {"predictor": predictor, "llm": chat_model, "variant": variant,
             "typed_model": jev_backend.MODEL, "population": population_spec, "seed": seed,
@@ -613,6 +668,8 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
             "declared": list(declared), "pin": pin,
             "min_calls_per_minute": min_calls_per_minute, "max_usd": max_usd,
             "prices": price}
+  if level is not None or kinds is not None:  # absent before 013-IP, so older runs keep their sha1
+    config.update(withhold=level, agents=kinds)
 
   balance = credit_gate(max_usd, credits or transport.fetch_credits)
   log("credits: balance US$%.2f; cap %s" % (balance["balance"],
@@ -635,8 +692,8 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
                "attempts": jev_backend.ATTEMPTS, "score_levels": jev_backend.SCORE_LEVELS}
   else:
     model = transport.openrouter_model(settings.LLM_VERS)
-    request = {"temperature": 0.7, "max_tokens": paper_max_tokens(),
-               "attempts": transport.ATTEMPTS}
+    request = {"temperature": seam.DIRECT_TEMPERATURE if variant == seam.DIRECT else 0.7,
+               "max_tokens": paper_max_tokens(), "attempts": transport.ATTEMPTS}
   data = {"population": population_spec,
           "population_path": "<genagents>/agent_bank/populations",
           "population_sha1": population_sha1(agents), "agents": len(agents),
@@ -650,10 +707,13 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
                       "overlapping its interview are not asked"}
   if built:
     withhold_sha256 = built.pop("withhold_sha256", None)
+    withhold_level = built.pop("withhold_level", None)
     data.update(built)
     data["items"]["per_agent"] = per_agent(sum(map(len, b)) for b in batches.values())
     if withhold_sha256:
       data["items"]["withhold_sha256"] = withhold_sha256  # beside batch_size (WB-C)
+    if withhold_level:
+      data["items"]["withhold_level"] = withhold_level  # 013-IP MC-D
   run = {
     "name": name,
     "condition": {"predictor": predictor, "model": model, "variant": variant,
@@ -732,8 +792,14 @@ def main(argv=None):
   ap.add_argument("--min-calls-per-minute", type=float, default=None)
   ap.add_argument("--llm", default=None, choices=LLMS,
                   help="the chain-of-thought model; a cot run must name it here or in LLM_VERS")
-  ap.add_argument("--variant", default=None, choices=("steps",),
-                  help="jev only: steps is jev-steps, the paper's reasoning steps in the instruction")
+  ap.add_argument("--variant", default=None, choices=("steps", "direct"),
+                  help="jev: steps is jev-steps, the paper's reasoning steps in the instruction; "
+                       "cot: direct is D5, the paper's prompt less its reasoning steps, at "
+                       "temperature 0 (013-IP MC-F)")
+  ap.add_argument("--withhold", default=None, metavar="LEVEL",
+                  help="the map of a population with several, one per level (013-IP MC-D)")
+  ap.add_argument("--agents", default=None, choices=BUILT_TYPES,
+                  help="ask only this agent of each respondent of a built population (MC-D)")
   ap.add_argument("--max-usd", type=float, default=None,
                   help="the run's spend cap at list price; the balance must cover it plus US$0.50")
   ap.add_argument("--out", default=RUNS_LOCAL)
@@ -742,7 +808,7 @@ def main(argv=None):
     folder = launch(args.name, args.predictor, args.population, args.seed,
                     tuple(args.instruments.split(",")), args.items, args.threads, args.pin,
                     args.min_calls_per_minute, args.out, llm=args.llm, variant=args.variant,
-                    max_usd=args.max_usd)
+                    max_usd=args.max_usd, level=args.withhold, kinds=args.agents)
   except (check_ready.NotReady, CreditsShort, GateFailed, FileExistsError, ValueError) as exc:
     sys.exit("not launched: %s" % exc)
   with open(os.path.join(folder, "run.json")) as f:

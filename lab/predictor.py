@@ -9,6 +9,11 @@ picks the backend at call time:
   the fork behaves as the published code (law 2).
 - `jev` hands the same `agent_desc` and the same question dict to `lab.jev_backend`
   (003-IP step 4) and returns its picks in the paper's output shape.
+- `cot` with `variant = "direct"` (013-IP MC-F, deviation D5) asks the same model for the
+  same item over the same `agent_desc`, with the paper's single-item prompt less its three
+  reasoning steps (`lab/prompts/categorical_direct_v1.txt`) at temperature 0, and reads the
+  reply with the paper's parser. One categorical item a call; the paper's files are not
+  touched.
 
 Either way the seam writes one `decision` event per item: the predictor, the kind, the
 `state_sha1` of the very `agent_desc` both arms receive, the item's position, text and
@@ -18,11 +23,18 @@ is recorded `ok: false` with `predicted: null` and then raised again, never repl
 fail-safe.
 """
 import hashlib
+import os
 
 from lab import trace
 from simulation_engine import settings
 
 KINDS = ("categorical", "numerical")
+# 013-IP MC-F, D5: the runner sets `variant` for a `cot` run; None is the paper's predictor.
+variant = None
+DIRECT = "direct"
+DIRECT_PROMPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts",
+                             "categorical_direct_v1.txt")
+DIRECT_TEMPERATURE = 0.0  # the author's choice (013-IP MC-F); the published code sends 0.7
 
 
 def state_sha1(agent_desc):
@@ -51,7 +63,9 @@ def _cot(kind, agent_desc, questions, float_resp):
   With nothing set the two are the same value.
   """
   from genagents.modules import interaction  # here, not above: interaction imports this module
-  if kind == "categorical":
+  if variant == DIRECT:
+    output = _direct(kind, agent_desc, questions)
+  elif kind == "categorical":
     output = interaction.run_gpt_generate_categorical_resp(
                agent_desc, questions, "1", settings.LLM_VERS)[0]
   else:
@@ -72,6 +86,36 @@ def _cot(kind, agent_desc, questions, float_resp):
             "aligned": aligned}
            for i in range(len(questions))]
   return output, items
+
+
+def _direct(kind, agent_desc, questions):
+  """D5 (013-IP MC-F): the paper's `run_gpt_generate_categorical_resp` for one item, with the
+  direct template and temperature 0. The prompt's input is built as the paper builds it, the
+  prompt by the paper's `generate_prompt`, and the reply read by the paper's parser; the
+  request goes through D2's door with the paper's cap, as `gpt_request` sends it, and a
+  request given up on raises (D3)."""
+  if kind != "categorical" or len(questions) != 1:
+    raise ValueError("the direct variant asks one categorical item a call, not %d %s"
+                     % (len(questions), kind))
+  import inspect
+  from lab import transport
+  from simulation_engine import gpt_structure
+  from simulation_engine.llm_json_parser import extract_first_json_dict_categorical
+  str_questions = ""
+  for key, val in questions.items():  # the paper's create_prompt_input, as written
+    str_questions += f"Q: {key}\n"
+    str_questions += f"Option: {val}\n\n"
+  prompt = gpt_structure.generate_prompt([agent_desc, str_questions.strip()], DIRECT_PROMPT)
+  cap = inspect.signature(gpt_structure.gpt_request).parameters["max_tokens"].default
+  try:
+    reply = transport.chat(prompt, settings.LLM_VERS, cap, DIRECT_TEMPERATURE)
+    reply = reply.choices[0].message.content
+  except transport.Failed:
+    raise
+  except Exception as e:  # as the paper's gpt_request answers any other failure
+    reply = f"GENERATION ERROR: {str(e)}"
+  responses, reasonings = extract_first_json_dict_categorical(reply)
+  return {"responses": responses, "reasonings": reasonings}
 
 
 def _jev(kind, agent_desc, questions, float_resp):
