@@ -36,9 +36,8 @@ The authors' files carry only these numbered deviations. Everything new is in `l
 - Keys come from the environment, or from a `.env` in the folder above this one:
   `OPENROUTER_API_KEY` for both predictors, and `TYPESAFE_API_KEY` for `jev`.
 - `example` and `demographic:N` are the populations that ship with the authors' code. The
-  2022 General Social Survey populations used in the experiments (`built:<name>`) were built
-  by a separate tool that is not part of this repository, and are read from
-  `$LAB_DATA/populations`.
+  2022 General Social Survey populations used in the experiments (`built:<name>`) are built
+  by `analysis/gss/build_population.py` and read from `$LAB_DATA/populations`.
 
 ```sh
 python -m lab.runner smoke-jev --predictor jev --population example+demographic:20
@@ -47,6 +46,9 @@ python -m lab.runner smoke-cot --predictor cot --llm google/gemma-4-31b-it --pop
 
 Each run writes `run.json`, `predictions.jsonl` and its trace under `runs-local/<name>/` in the
 folder above this one. `python -m lab.runner --help` lists every option.
+
+The runs behind the results in the System One essay, the populations they predicted and the
+code that scores them are in `runs/`, `data/` and `analysis/`: see [runs/README.md](runs/README.md).
 
 ---
 

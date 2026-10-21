@@ -1,0 +1,198 @@
+{
+  "name": "gss22-cot-4o-2",
+  "registered": "2026-09-29",
+  "status": "citable",
+  "condition": {
+    "predictor": "cot",
+    "model": "openai/gpt-4o",
+    "variant": null,
+    "agent_type": "demographic+survey",
+    "instrument": "gss",
+    "prompt_version": "1",
+    "request": {
+      "temperature": 0.7,
+      "max_tokens": 1500,
+      "attempts": 40
+    }
+  },
+  "code": {
+    "sha": "fa8710258c5ef6c62ee6b5992ae385f263b28774",
+    "tree": "427d9f5d2e66ab0fb13a29f3f733dabad7fcc92d",
+    "branch": "lab",
+    "dirty": false
+  },
+  "data": {
+    "population": "built:gss22-a:20",
+    "population_path": "<lab-data>/populations/gss22-a",
+    "population_sha1": "cb3bfa3297c7404997d99784c428ff7052151d5d",
+    "agents": 40,
+    "agent_ids": [
+      "3987-demographic",
+      "3987-survey",
+      "2928-demographic",
+      "2928-survey",
+      "2198-demographic",
+      "2198-survey",
+      "2903-demographic",
+      "2903-survey",
+      "1795-demographic",
+      "1795-survey",
+      "2980-demographic",
+      "2980-survey",
+      "2663-demographic",
+      "2663-survey",
+      "2049-demographic",
+      "2049-survey",
+      "1688-demographic",
+      "1688-survey",
+      "3848-demographic",
+      "3848-survey",
+      "774-demographic",
+      "774-survey",
+      "397-demographic",
+      "397-survey",
+      "3305-demographic",
+      "3305-survey",
+      "1630-demographic",
+      "1630-survey",
+      "1514-demographic",
+      "1514-survey",
+      "2625-demographic",
+      "2625-survey",
+      "461-demographic",
+      "461-survey",
+      "3014-demographic",
+      "3014-survey",
+      "1881-demographic",
+      "1881-survey",
+      "1868-demographic",
+      "1868-survey"
+    ],
+    "items": {
+      "path": "<osf>/figure2/data/question_master",
+      "count": 132,
+      "sha1": "3dc2c1a8eacf5f5802f53304fe9565e27243f0ac",
+      "batches": 8,
+      "batch_size": 4,
+      "per_agent": 30
+    },
+    "held_out": "30 scorable items per respondent",
+    "population_json_sha256": "dd761821f6664a76fb93fdceee9386ae849de1045670efd4cae5f27d029eec04",
+    "items_sha256": "d3e5b7910183314b7e32b115b76ec298565181cf1df0efffc3880e072dec67c2",
+    "truth_sha256": "3136f8edd805264e33a9de898388d22463d49d1e9e65a9f0512588fa990306e7",
+    "respondents": 20
+  },
+  "seed": 20260926,
+  "config_sha1": "b29f9f151f535bc8eb634df9b941be4d79f70633",
+  "config": {
+    "predictor": "cot",
+    "llm": "openai/gpt-4o",
+    "variant": null,
+    "typed_model": "jev-latest",
+    "population": "built:gss22-a:20",
+    "seed": 20260926,
+    "instruments": [
+      "gss"
+    ],
+    "items": null,
+    "batch_size": 4,
+    "threads": 4,
+    "declared": [
+      "openai",
+      "azure"
+    ],
+    "pin": null,
+    "min_calls_per_minute": 3.0,
+    "max_usd": 6.0,
+    "prices": {
+      "chat": {
+        "model": "openai/gpt-4o",
+        "in": 2.5,
+        "out": 10.0
+      },
+      "embedding": {
+        "model": "openai/text-embedding-3-small",
+        "in": 0.02,
+        "out": 0.0
+      },
+      "typed": {
+        "model": "jev-latest",
+        "in": 0.042,
+        "out": 0.0
+      }
+    }
+  },
+  "started": "2026-09-28T23:59:35-05:00",
+  "finished": "2026-09-29T00:16:28-05:00",
+  "providers": {
+    "model": "openai/gpt-4o",
+    "declared": [
+      "openai",
+      "azure"
+    ],
+    "pin": "openai",
+    "fallbacks": [
+      "azure"
+    ],
+    "forced": false,
+    "queried_at": "2026-09-28T23:59:33-0500",
+    "endpoints": [
+      {
+        "tag": "azure",
+        "provider_name": "Azure",
+        "status": 0,
+        "uptime_last_5m": 100,
+        "uptime_last_30m": 100,
+        "uptime_last_1d": 99.94123827684166,
+        "latency_p50_ms_30m": 1188
+      },
+      {
+        "tag": "openai",
+        "provider_name": "OpenAI",
+        "status": 0,
+        "uptime_last_5m": 100,
+        "uptime_last_30m": 99.86724195154332,
+        "uptime_last_1d": 99.8570837216509,
+        "latency_p50_ms_30m": 597
+      }
+    ],
+    "min_calls_per_minute": 3.0
+  },
+  "embeddings": "openrouter",
+  "credits": {
+    "total_credits": 40,
+    "total_usage": 29.627484245,
+    "balance": 10.372516,
+    "needed": 6.5,
+    "read_at": "2026-09-28T23:59:33-05:00"
+  },
+  "outcome": {
+    "finished": "2026-09-29T00:16:28-05:00",
+    "models_seen": [],
+    "stopped": null,
+    "spent_usd": 5.022184
+  },
+  "outputs": [
+    {
+      "file": "predictions.jsonl.gz",
+      "sha1": "a6d1939d2b2bf5a96154b2de91dbc4f0f9a6f3aa",
+      "records": 1200
+    },
+    {
+      "file": "trace.jsonl.gz",
+      "sha1": "1dad7a0d404ab5b13e61fbddc3ba0f5d64aed5a5",
+      "records": 1731
+    }
+  ],
+  "counts": {
+    "predictions": 1200,
+    "ok": 1200,
+    "errors": 0,
+    "fail_safes": 0,
+    "agents": 40,
+    "items": 132,
+    "with_truth": 0
+  },
+  "source": "runs-local/gss22-cot-4o-2",
+  "notes": "The control's repeat: the chain of thought on gpt-4o over the first 20 respondents of gss22-a, launched after gss22-cot-4o was registered."
+}

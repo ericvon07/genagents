@@ -1,0 +1,186 @@
+item_id,family,status,variables,form,codes,text,note
+NATSPAC/Y,NAT,scored,natspacy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATSPAC/Y,NAT,"memory only: form X wording (""the space exploration program"")",natspac,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""the space exploration program""?",
+NATENVIR/Y,NAT,scored,natenvir,X,1=Too little | 2=About right | 3=Too much,,"wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form X wording; the 2022 codebook prints NATENVIY with the X text, the file labels it ""The environment:Version Y""; only form X is taken as the bank's wording"
+NATENVIR/Y,NAT,"memory only: form Y wording (""the environment"")",natenviy,Y,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""the environment""?",
+NATHEAL/Y,NAT,scored,nathealy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATHEAL/Y,NAT,"memory only: form X wording (""improving and protecting the nation's health"")",natheal,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""improving and protecting the nation's health""?",
+NATCITY/Y,NAT,scored,natcityy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATCITY/Y,NAT,"memory only: form X wording (""solving the problems of the big cities"")",natcity,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""solving the problems of the big cities""?",
+NATDRUG/Y,NAT,scored,natdrugy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATDRUG/Y,NAT,"memory only: form X wording (""dealing with drug addiction"")",natdrug,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""dealing with drug addiction""?",
+NATEDUC/Y,NAT,scored,nateducy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATEDUC/Y,NAT,"memory only: form X wording (""improving the nation's education system"")",nateduc,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""improving the nation's education system""?",
+NATRACE/Y,NAT,scored,natracey,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATRACE/Y,NAT,"memory only: form X wording (""improving the conditions of Blacks"")",natrace,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""improving the conditions of Blacks""?",
+NATARMS/Y,NAT,scored,natarmsy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATARMS/Y,NAT,"memory only: form X wording (""the military, armaments, and defense"")",natarms,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""the military, armaments, and defense""?",
+NATAID/Y,NAT,scored,nataidy,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATAID/Y,NAT,"memory only: form X wording (""foreign aid"")",nataid,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""foreign aid""?",
+NATFARE/Y,NAT,scored,natfarey,Y,1=Too little | 2=About right | 3=Too much,,wording experiment NAT*/NAT*Y (codebook p.30): the bank has the form Y wording
+NATFARE/Y,NAT,"memory only: form X wording (""welfare"")",natfare,X,1=Too little | 2=About right | 3=Too much,"Are we spending too much, too little, or about the right amount on ""welfare""?",
+NATROAD,NAT,scored,natroad,both,1=Too little | 2=About right | 3=Too much,,
+NATSOC,NAT,scored,natsoc,both,1=Too little | 2=About right | 3=Too much,,
+NATMASS,NAT,scored,natmass,both,1=Too little | 2=About right | 3=Too much,,
+NATPARK,NAT,scored,natpark,both,1=Too little | 2=About right | 3=Too much,,
+NATCHLD,NAT,scored,natchld,both,1=Too little | 2=About right | 3=Too much,,
+NATSCI,NAT,scored,natsci,both,1=Too little | 2=About right | 3=Too much,,
+NATENRGY,NAT,scored,natenrgy,both,1=Too little | 2=About right | 3=Too much,,
+USWARY,single,scored,uswary uswaryv uswarynv,both,1=Yes | 2=No,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so uswary (in person or phone), uswaryv (web form Y) and uswarynv (web form X) are one wording"
+PRAYER,single,scored,prayer prayerv prayernv,both,1=Approve | 2=Disapprove,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so prayer (in person or phone), prayerv (web form Y) and prayernv (web form X) are one wording"
+COURTS,single,scored,courtsv,Y,1=Too harshly | 2=Not harshly enough | 3=About right,,"volunteered-response experiment: the bank lists ""About right"", which the GSS takes only when volunteered; only courtsv (web, form Y) showed it as an option"
+COURTS,single,"memory only: the bank's option ""About right"" was not offered: volunteered only (courts, in person or phone) or absent (courtsnv, web form X)",courts courtsnv,both,1=Too harshly | 2=Not harshly enough | 3=About right,,
+DISCAFFW,DISCAFF,scored,discaffw discaffwv discaffwnv,both,1=Very likely | 2=Somewhat likely | 3=Somewhat unlikely | 4=Very unlikely,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so discaffw (in person or phone), discaffwv (web form Y) and discaffwnv (web form X) are one wording; code 3 is labelled ""not very likely"" in the file; the 2022 question reads ""somewhat unlikely"" (codebook), so it is the bank's third option"
+DISCAFFM,DISCAFF,scored,discaffm,both,1=Very likely | 2=Somewhat likely | 3=Somewhat unlikely | 4=Very unlikely,,"code 3 is labelled ""not very likely"" in the file; the 2022 question reads ""somewhat unlikely"" (codebook), so it is the bank's third option"
+FEHIRE,FE,scored,fehire,both,1=Strongly agree | 2=Agree | 3=Neither agree nor disagree | 4=Disagree | 5=Strongly disagree,,
+FECHLD,FE,scored,fechld,both,1=Strongly agree | 2=Agree | 3=Disagree | 4=Strongly disagree,,
+FEPRESCH,FE,scored,fepresch,both,1=Strongly agree | 2=Agree | 3=Disagree | 4=Strongly disagree,,
+FEFAM,FE,scored,fefam,both,1=Strongly agree | 2=Agree | 3=Disagree | 4=Strongly disagree,,
+FEPOL,FE,scored,fepol fepolv fepolnv,both,1=Agree | 2=Disagree,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so fepol (in person or phone), fepolv (web form Y) and fepolnv (web form X) are one wording"
+MOBILE16,single,"not scored: a scratch field (same_residence_since_16), never held out",,,,,
+INCOM16,FINANCES,"not scored: a scratch field (family_income_at_16), never held out",,,,,
+DWELOWN16,single,scored,dwelown16,both,1=Own or is buying | 2=Pays rent | 3=Other,,labels differ in tense only
+DIVORCED,single,scored,divorce,both,1=Yes | 2=No,,renamed DIVORCE in the file; asked only of the currently married or widowed
+POSSLQ/Y,SPOUSE,scored,posslqy,Y,"1=I am married and living in the same household as my husband or wife | 2=I have a steady partner, and we live in the same household | 3=I have a husband or wife or steady partner, but we don't live in the same household | 4=I don't have a steady partner",,wording experiment POSSLQ/POSSLQY (codebook p.30): the bank's options are the form Y wording
+POSSLQ/Y,SPOUSE,"memory only: form X wording (""living as married"")",posslq,X,"1=I am married and living in the same household as my husband or wife | 2=I am living as married and my partner and I together live in the same household | 3=I have a husband or wife or steady partner, but we don't live in the same household | 4=I don't have a steady partner",Which of these statements applies to you?,
+WRKSTAT,WORK,"not scored: a scratch field (work_status), never held out",,,,,
+EVWORK,WORK,scored,evwork,both,1=Yes | 2=No,,
+WRKGOVT1,WORK,scored,wrkgovt1,both,1=Yes | 2=No,,
+WRKGOVT2,WORK,scored,wrkgovt2,both,1=Yes | 2=No,,
+PARTFULL,WORK,scored,partfull,both,1=Full-Time | 2=Part-Time,,
+WKSUB1,WORK,scored,wksub1,both,1=Yes | 2=No,,
+WKSUP1,WORK,scored,wksup1,both,1=Yes | 2=No,,
+CONARMY,CON,scored,conarmy,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONBUS,CON,scored,conbus,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONCLERG,CON,scored,conclerg,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONEDUC,CON,scored,coneduc,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONFED,CON,scored,confed,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONFINAN,CON,scored,confinan,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONJUDGE,CON,scored,conjudge,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONLABOR,CON,scored,conlabor,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONLEGIS,CON,scored,conlegis,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONMEDIC,CON,scored,conmedic,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONPRESS,CON,scored,conpress,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONSCI,CON,scored,consci,both,1=A great deal | 2=Only some | 3=Hardly any,,
+CONTV,CON,scored,contv,both,1=A great deal | 2=Only some | 3=Hardly any,,
+JOBLOSE,WORK,scored,joblose,both,1=Very likely | 2=Fairly likely | 3=Not too likely | 4=Not likely,,
+JOBFIND,WORK,scored,jobfind,both,1=Very easy | 2=Somewhat easy | 3=Not easy,,
+HAPPY,single,scored,happy,both,1=Very happy | 2=Pretty happy | 3=Not too happy,,
+HAPMAR,SPOUSE,scored,hapmar,both,1=Very happy | 2=Pretty happy | 3=Not too happy,,
+SATJOB,WORK,scored,satjob,both,1=Very satisfied | 2=Moderately satisfied | 3=A little dissatisfied | 4=Very dissatisfied,,
+SPDEG*,SPOUSE,scored,spdeg,both,0=Less than high school | 1=High school | 2=Associate/junior college | 3=Bachelor's | 4=Graduate,,mapped by position (codes 0-4)
+SPJEW,SPOUSE,scored,spjew,both,1=Orthodox | 2=Conservative | 3=Reform | 4=None of these (some other denomination) | 5=-,,"code 5 ""other"" has no bank option of its own and is dropped; code 4 ""none of these"" is the bank's ""None of these (some other denomination)"""
+SPFUND,SPOUSE,scored,spfund,both,1=Fundamentalist | 2=Moderate | 3=Liberal,,
+UNEMP,WORK,scored,unemp,both,1=Yes | 2=No,,
+UNION1,single,scored,union1,both,"1=You belong | 2=Spouse or partner belongs | 3=You and spouse or partner belong | 4=Neither belongs (You don't belong, if you don't have a spouse/partner)",,"mapped by label (""yes, respondent belongs"" is ""You belong"")"
+SPKATH/Y,SPK/COL/LIB,scored,spkath,X,1=Allowed | 2=Not allowed,,"gender-neutral wording experiment (codebook p.32): the bank has the form X wording (""should he"")"
+SPKATH/Y,SPK/COL/LIB,"memory only: form Y wording (""should this person"")",spkathy,Y,"1=Yes, allowed to speak | 2=Not allowed","There are always some people whose ideas are considered bad or dangerous by other people. For instance, somebody who is against all churches and religion. If such a person wanted to make a speech in your community against churches and religion, should this person be allowed to speak, or not?",
+COLATH,SPK/COL/LIB,scored,colath,both,4=Allowed | 5=Not allowed,,the file codes the answers 4 and 5
+SPKRAC/Y,SPK/COL/LIB,scored,spkrac,X,1=Allowed | 2=Not allowed,,"gender-neutral wording experiment (codebook p.32): the bank has the form X wording (""should he"")"
+SPKRAC/Y,SPK/COL/LIB,"memory only: form Y wording (""should this person"")",spkracy,Y,"1=Yes, allowed to speak | 2=Not allowed","Consider a person who believes that Blacks are genetically inferior. If such a person wanted to make a speech in your community claiming that Blacks are inferior, should this person be allowed to speak, or not?",
+COLRAC,SPK/COL/LIB,scored,colrac,both,4=Allowed | 5=Not allowed,,the file codes the answers 4 and 5
+LIBRAC/Y,SPK/COL/LIB,scored,libracy,Y,1=Remove | 2=Not remove,,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""a book this person wrote"")"
+LIBRAC/Y,SPK/COL/LIB,"memory only: form X wording (""a book he wrote"")",librac,X,1=Remove | 2=Not remove,"Consider a person who believes that Blacks are genetically inferior. If some people in your community suggested that a book he wrote which said Blacks are inferior should be taken out of your public library, would you favor removing this book, or not?",
+SPKCOM/Y,SPK/COL/LIB,scored,spkcomy,Y,"1=Yes, allowed to speak | 2=Not allowed",,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""a self-identified Communist"")"
+SPKCOM/Y,SPK/COL/LIB,"memory only: form X wording (""a man who admits he is a Communist"")",spkcom,X,"1=Yes, allowed to speak | 2=Not allowed","We would like to ask you some questions about a man who admits he is a Communist. Suppose this admitted Communist wanted to make a speech in your community. Should he be allowed to speak, or not?",
+COLCOM/Y,SPK/COL/LIB,scored,colcomy,Y,"1=Yes, fired | 2=Not fired",,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""a self-identified Communist"")"
+COLCOM/Y,SPK/COL/LIB,"memory only: form X wording (""a man who admits he is a Communist"")",colcom,X,"4=Yes, fired | 5=Not fired","We would like to ask you some questions about a man who admits he is a Communist. Suppose he is teaching in a college. Should he be fired, or not?",
+LIBCOM/Y,SPK/COL/LIB,scored,libcomy,Y,1=Remove | 2=Not remove,,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""a self-identified Communist"")"
+LIBCOM/Y,SPK/COL/LIB,"memory only: form X wording (""a man who admits he is a Communist"")",libcom,X,1=Remove | 2=Not remove,"We would like to ask you some questions about a man who admits he is a Communist. Suppose he wrote a book which is in your public library. Somebody in your community suggests that the book should be removed from the library. Would you favor removing it, or not?",
+SPKHOMO/Y,SPK/COL/LIB,not scored: not asked in 2022,,,,,
+COLHOMO,SPK/COL/LIB,not scored: not asked in 2022,,,,,
+LIBHOMO/Y,SPK/COL/LIB,not scored: not asked in 2022,,,,,
+CAPPUN,single,scored,cappun,both,1=Favor | 2=Oppose,,
+POLHITOK/Y,POL,scored,polhitoky,Y,1=Yes | 2=No,,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""a police officer"")"
+POLHITOK/Y,POL,"memory only: form X wording (""a policeman"")",polhitok,X,1=Yes | 2=No,Are there any situations you can imagine in which you would approve of a policeman striking an adult male citizen?,
+POLABUSE/Y,POL,scored,polabusey,Y,1=Yes | 2=No,,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""to the police officer"")"
+POLABUSE/Y,POL,"memory only: form X wording (""to the policeman"")",polabuse,X,1=Yes | 2=No,Would you approve of a policeman striking a citizen who had said vulgar and obscene things to the policeman?,
+POLATTAK/Y,POL,scored,polattaky,Y,1=Yes | 2=No,,"gender-neutral wording experiment (codebook p.32): the bank has the form Y wording (""the police officer"")"
+POLATTAK/Y,POL,"memory only: form X wording (""the policeman"")",polattak,X,1=Yes | 2=No,Would you approve if the citizen was attacking the policeman with his fists?,
+GRASS,single,scored,grass grassv grassnv,both,1=Should be legal | 2=Should not be legal,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so grass (in person or phone), grassv (web form Y) and grassnv (web form X) are one wording"
+GUNLAW,single,scored,gunlaw,both,1=Favor | 2=Oppose,,
+OWNGUN,single,scored,owngun,both,1=Yes | 2=No | 3=-,,"code 3 ""refused"" is a non-answer"
+HUNT1,single,scored,hunt1,both,"1=You hunt | 2=Spouse or partner hunts | 3=Both hunt | 4=Neither hunt (you don't hunt, if you don't have a spouse/partner)",,"mapped by label (""yes, respondent does"" is ""You hunt"")"
+CLASS,FINANCES,scored,class,both,1=Lower class | 2=Working class | 3=Middle class | 4=Upper class,,
+SATFIN,FINANCES,scored,satfin,both,1=Satisfied | 2=More or less | 3=Not at all satisfied,,"labels differ in form only (""pretty well satisfied"" is ""Satisfied"")"
+FINALTER,FINANCES,scored,finalter,both,1=Better | 2=Worse | 3=Stayed same,,
+FINRELA,FINANCES,scored,finrela,both,1=Far below average | 2=Below average | 3=Average | 4=Above average | 5=Far above average,,
+RACDIF1,RACDIF,scored,racdif1,Y,1=Yes | 2=No,,"wording experiment RACDIF/RACDIFX, new in 2022 (codebook p.30): the bank has the original wording, form Y"
+RACDIF1,RACDIF,memory only: form X wording (the extended introduction),racdif1x,X,1=Yes | 2=No,"The next questions have been asked for almost 50 years. For historical comparison, we would like to ask them again here. On the average Black people have worse jobs, income, and housing than White people. Do you think these differences are ""mainly due to discrimination""?",
+RACDIF2,RACDIF,scored,racdif2,Y,1=Yes | 2=No,,"wording experiment RACDIF/RACDIFX, new in 2022 (codebook p.30): the bank has the original wording, form Y"
+RACDIF2,RACDIF,memory only: form X wording (the extended introduction),racdif2x,X,1=Yes | 2=No,"The next questions have been asked for almost 50 years. For historical comparison, we would like to ask them again here. On the average Black people have worse jobs, income, and housing than White people. Do you think these differences are ""because most Blacks/African-Americans have less in-born ability to learn""?",
+RACDIF3,RACDIF,scored,racdif3,Y,1=Yes | 2=No,,"wording experiment RACDIF/RACDIFX, new in 2022 (codebook p.30): the bank has the original wording, form Y"
+RACDIF3,RACDIF,memory only: form X wording (the extended introduction),racdif3x,X,1=Yes | 2=No,"The next questions have been asked for almost 50 years. For historical comparison, we would like to ask them again here. On the average Black people have worse jobs, income, and housing than White people. Do you think these differences are ""because Blacks/African-Americans don't have the chance for education that it takes to rise out of poverty""?",
+RACDIF4,RACDIF,scored,racdif4,Y,1=Yes | 2=No,,"wording experiment RACDIF/RACDIFX, new in 2022 (codebook p.30): the bank has the original wording, form Y"
+RACDIF4,RACDIF,memory only: form X wording (the extended introduction),racdif4x,X,1=Yes | 2=No,"The next questions have been asked for almost 50 years. For historical comparison, we would like to ask them again here. On the average Black people have worse jobs, income, and housing than White people. Do you think these differences are ""because most Blacks/African-Americans just don't have the motivation or will power to pull themselves up out of poverty?""",
+WLTHWHTS,WLTH,scored,wlthwhts,both,1=1 (Rich) | 2=2 | 3=3 | 4=4 | 5=5 | 6=6 | 7=7 (Poor),,
+WLTHBLKS,WLTH,scored,wlthblks,both,1=1 (Rich) | 2=2 | 3=3 | 4=4 | 5=5 | 6=6 | 7=7 (Poor),,
+WLTHHSPS,WLTH,scored,wlthhsps,both,1=1 (Rich) | 2=2 | 3=3 | 4=4 | 5=5 | 6=6 | 7=7 (Poor),,
+RACWORK,WORK,scored,racwork,both,1=All white | 2=Mostly white | 3=About half and half | 4=Mostly black | 5=All black | 6=Works alone,,
+LETIN1A,single,scored,letin1a,both,1=Increased a lot | 2=Increased a little | 3=Remain the same as it is | 4=Reduced a little | 5=Reduced a lot,,
+GETAHEAD,single,scored,getaheadv,Y,"1=Hard work most important | 2=Hard work, luck equally important | 3=Luck most important | 4=-",,"volunteered-response experiment: the bank lists ""Hard work, luck equally important"", which the GSS takes only when volunteered; only getaheadv (web, form Y) showed it as an option; code 4 ""other"" has no bank option: that answer is neither truth nor memory (no 2022 respondent gives it)"
+GETAHEAD,single,"memory only: the bank's option ""Hard work, luck equally important"" was not offered: volunteered only (getahead, in person or phone) or absent (getaheadnv, web form X)",getahead getaheadnv,both,"1=Hard work most important | 2=Hard work, luck equally important | 3=Luck most important | 4=-",,
+AGED,single,scored,agedv,Y,1=Good idea | 2=Bad idea | 3=Depends,,"volunteered-response experiment: the bank lists ""Depends"", which the GSS takes only when volunteered; only agedv (web, form Y) showed it as an option"
+AGED,single,"memory only: the bank's option ""Depends"" was not offered: volunteered only (aged, in person or phone) or absent (agednv, web form X)",aged agednv,both,1=Good idea | 2=Bad idea | 3=Depends,,
+PARSOL,FINANCES,scored,parsol,both,1=Much better | 2=Somewhat better | 3=About the same | 4=Somewhat worse | 5=Much worse,,
+KIDSSOL,FINANCES,scored,kidssolv,Y,1=Much better | 2=Somewhat better | 3=About the same | 4=Somewhat worse | 5=Much worse | 6=I have no children,,"volunteered-response experiment: the bank lists ""I have no children"", which the GSS takes only when volunteered; only kidssolv (web, form Y) showed it as an option"
+KIDSSOL,FINANCES,"memory only: the bank's option ""I have no children"" was not offered: volunteered only (kidssol, in person or phone) or absent (kidssolnv, web form X)",kidssol kidssolnv,both,1=Much better | 2=Somewhat better | 3=About the same | 4=Somewhat worse | 5=Much worse | 6=I have no children,,
+SPANKING,single,scored,spanking,both,1=Strongly agree | 2=Agree | 3=Disagree | 4=Strongly disagree,,
+DIVLAW,single,scored,divlawv,Y,1=Easier | 2=More difficult | 3=Stay as is,,"volunteered-response experiment: the bank lists ""Stay as is"", which the GSS takes only when volunteered; only divlawv (web, form Y) showed it as an option"
+DIVLAW,single,"memory only: the bank's option ""Stay as is"" was not offered: volunteered only (divlaw, in person or phone) or absent (divlawnv, web form X)",divlaw divlawnv,both,1=Easier | 2=More difficult | 3=Stay as is,,
+SEXEDUC,single,scored,sexeduc,both,1=Favor | 2=Oppose,,
+PILLOK,single,scored,pillok,both,1=Strongly agree | 2=Agree | 3=Disagree | 4=Strongly disagree,,
+XMARSEX,SEXMORAL,scored,xmarsex,both,1=Always wrong | 2=Almost always wrong | 3=Sometimes wrong | 4=Not wrong at all,,
+HOMOSEX,SEXMORAL,scored,homosex,both,1=Always wrong | 2=Almost always wrong | 3=Sometimes wrong | 4=Not wrong at all,,
+MARHOMO,SEXMORAL,scored,marsame,both,1=Strongly agree | 2=Agree | 3=Neither agree nor disagree | 4=Disagree | 5=Strongly disagree,,renamed MARSAME in the file
+DISCAFF,DISCAFF,scored,discaff,both,1=Very likely | 2=Somewhat likely | 3=Not very likely,,
+ABDEFECT,AB,scored,abdefect abdefectg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): abdefectg is form X shown as a grid on the web, same wording and options"
+ABNOMORE,AB,scored,abnomore abnomoreg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): abnomoreg is form X shown as a grid on the web, same wording and options"
+ABHLTH,AB,scored,abhlth abhlthg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): abhlthg is form X shown as a grid on the web, same wording and options"
+ABPOOR,AB,scored,abpoor abpoorg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): abpoorg is form X shown as a grid on the web, same wording and options"
+ABRAPE,AB,scored,abrape abrapeg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): abrapeg is form X shown as a grid on the web, same wording and options"
+ABSINGLE,AB,scored,absingle absingleg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): absingleg is form X shown as a grid on the web, same wording and options"
+ABANY,AB,scored,abany abanyg,both,1=Yes | 2=No,,"grid experiment (codebook p.32): abanyg is form X shown as a grid on the web, same wording and options"
+LETDIE1,LETDIE/SUICIDE,scored,letdie1,X,1=Yes | 2=No,,"gender-neutral wording experiment (codebook p.32): the bank has the form X wording (""should be allowed"")"
+LETDIE1,LETDIE/SUICIDE,"memory only: form Y wording (""should or should not be allowed"")",letdie1y,Y,1=Yes | 2=No,"When a person has a disease that cannot be cured, do you think doctors should or should not be allowed by law to end the patient's life by some painless means if the patient and his family request it?",
+SUICIDE1,LETDIE/SUICIDE,scored,suicide1 suicide1g,both,1=Yes | 2=No,,"grid experiment (codebook p.32): suicide1g is form X shown as a grid on the web, same wording and options"
+SUICIDE2,LETDIE/SUICIDE,scored,suicide2 suicide2g,both,1=Yes | 2=No,,"grid experiment (codebook p.32): suicide2g is form X shown as a grid on the web, same wording and options"
+SUICIDE3,LETDIE/SUICIDE,scored,suicide3 suicide3g,both,1=Yes | 2=No,,"grid experiment (codebook p.32): suicide3g is form X shown as a grid on the web, same wording and options"
+SUICIDE4,LETDIE/SUICIDE,scored,suicide4 suicide4g,both,1=Yes | 2=No,,"grid experiment (codebook p.32): suicide4g is form X shown as a grid on the web, same wording and options"
+PORNLAW,single,scored,pornlaw,both,1=There should be laws against the distribution of pornography whatever the age | 2=There should be laws against the distribution of pornography to persons under 18 | 3=There should be no laws forbidding the distribution of pornography,,
+FAIR,FAIR/HELPFUL/TRUST,scored,fairv,Y,1=Would take advantage of you | 2=Would try to be fair | 3=Depends,,"volunteered-response experiment: the bank lists ""Depends"", which the GSS takes only when volunteered; only fairv (web, form Y) showed it as an option"
+FAIR,FAIR/HELPFUL/TRUST,"memory only: the bank's option ""Depends"" was not offered: volunteered only (fair, in person or phone) or absent (fairnv, web form X)",fair fairnv,both,1=Would take advantage of you | 2=Would try to be fair | 3=Depends,,
+HELPFUL,FAIR/HELPFUL/TRUST,scored,helpfulv,Y,1=Try to be helpful | 2=Looking out for themselves | 3=Depends,,"volunteered-response experiment: the bank lists ""Depends"", which the GSS takes only when volunteered; only helpfulv (web, form Y) showed it as an option"
+HELPFUL,FAIR/HELPFUL/TRUST,"memory only: the bank's option ""Depends"" was not offered: volunteered only (helpful, in person or phone) or absent (helpfulnv, web form X)",helpful helpfulnv,both,1=Try to be helpful | 2=Looking out for themselves | 3=Depends,,
+TRUST,FAIR/HELPFUL/TRUST,scored,trustv,Y,1=Can trust | 2=Can't be too careful | 3=Depends,,"volunteered-response experiment: the bank lists ""Depends"", which the GSS takes only when volunteered; only trustv (web, form Y) showed it as an option"
+TRUST,FAIR/HELPFUL/TRUST,"memory only: the bank's option ""Depends"" was not offered: volunteered only (trust, in person or phone) or absent (trustnv, web form X)",trust trustnv,both,1=Can trust | 2=Can't be too careful | 3=Depends,,
+TAX,single,scored,tax,both,1=Too high | 2=About right | 3=Too low,,
+VOTE16,VOTE16,scored,vote16,both,1=Voted | 2=Did not vote | 3=Ineligible,,"the 2022 text names ""Hillary Clinton"" and ""Donald Trump""; the bank says ""Clinton"" and ""Trump"""
+PRES16,VOTE16,scored,pres16,both,1=Clinton | 2=Trump | 3=Other candidate | 4=Didn't vote for president,,"the 2022 text names ""Hillary Clinton"" and ""Donald Trump""; the bank says ""Clinton"" and ""Trump"""
+IF16WHO,VOTE16,scored,if16who,both,1=Clinton | 2=Trump | 3=Other | 4=-,,"code 4 ""don't know/can't remember"" is a non-answer"
+POLVIEWS,single,"not scored: a scratch field (political_views), never held out",,,,,POLVIEWS is the seventh scratch item: the first list had six
+NEWS,single,scored,news,both,1=Every day | 2=A few times a week | 3=Once a week | 4=Less than once a week | 5=Never,,
+JEW,RELIGION,scored,jew,both,1=Orthodox | 2=Conservative | 3=Reform | 4=None of these (some other denomination) | 5=-,,"code 5 ""other"" has no bank option of its own and is dropped; code 4 ""none of these"" is the bank's ""None of these (some other denomination)"""
+RELIG16*,RELIGION,"not scored: a scratch field (religion_at_16), never held out",,,,,
+JEW16*,RELIGION,scored,jew16,both,1=Orthodox | 2=Conservative | 3=Reform | 4=None of these (some other denomination) | 5=-,,"code 5 ""other"" has no bank option of its own and is dropped; code 4 ""none of these"" is the bank's ""None of these (some other denomination)"""
+ATTEND,RELIGION,scored,attend,both,0=Never | 1=Less than once a year | 2=Once a year | 3=Several times a year | 4=Once a month | 5=2-3 times a month | 6=Nearly every week | 7=Every week | 8=More than once a week,,"mapped by position; the file says ""about once or twice a year"", ""about once a month"", ""several times a week"""
+PRAY,RELIGION,scored,pray,both,1=Several times a day | 2=Once a day | 3=Several times a week | 4=Once a week | 5=Less than once a week | 6=Never,,
+POSTLIFE,RELIGION,scored,postlife postlifev postlifenv,both,1=Yes | 2=No,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so postlife (in person or phone), postlifev (web form Y) and postlifenv (web form X) are one wording"
+BIBLE,RELIGION,scored,bible biblev biblenv,both,1=Word of God | 2=Inspired word | 3=Ancient book | 4=-,,"volunteered-response experiment: the volunteered category is not one of the bank's options, so bible (in person or phone), biblev (web form Y) and biblenv (web form X) are one wording; code 4 ""other"" (volunteered) has no bank option: that answer is neither truth nor memory"
+REBORN,RELIGION,scored,reborn,both,1=Yes | 2=No,,
+SAVESOUL,RELIGION,scored,savesoul,both,1=Yes | 2=No,,
+GRANBORN,single,scored,granborn,both,0=None | 1=One | 2=Two | 3=Three | 4=Four,,
+USCITZN*,single,"not scored: a scratch field (us_citizenship_status), never held out",,,,,
+FUCITZN,single,scored,fucitznv,Y,1=Currently applying for U.S. citizenship | 2=Planning to apply for U.S. citizenship | 3=Not planning to apply to U.S. citizenship | 4=Not eligible to become a u.s. citizen,,"volunteered-response experiment: the bank lists ""Not eligible to become a u.s. citizen"", which the GSS takes only when volunteered; only fucitznv (web, form Y) showed it as an option"
+FUCITZN,single,"memory only: the bank's option ""Not eligible to become a u.s. citizen"" was not offered: volunteered only (fucitzn, in person or phone) or absent (fucitznnv, web form X)",fucitzn fucitznnv,both,1=Currently applying for U.S. citizenship | 2=Planning to apply for U.S. citizenship | 3=Not planning to apply to U.S. citizenship | 4=Not eligible to become a u.s. citizen,,
+MNTHSUSA,single,"not scored: the bank's options (10+, 9, 8, 6, 1 months) cannot hold the answers 2-5, 7 and 11 months; 13 answers in 2022",,,,,
+INCOME,FINANCES,scored,income,both,1=Less than $1000 | 2=$1000 to 2999 | 3=$3000 to 3999 | 4=$4000 to 4999 | 5=$5000 to 5999 | 6=$6000 to 6999 | 7=$7000 to 7999 | 8=$8000 to 9999 | 9=$10000 to 14999 | 10=$15000 to 19999 | 11=$20000 to 24999 | 12=$25000 or more,,mapped by position; labels differ in format only
+OTHLANG,single,"not scored: a scratch field (speak_other_language), never held out",,,,,
+HEALTH,single,scored,health,both,1=Excellent | 2=Good | 3=Fair | 4=Poor,,
+COMPUSE*,INTERNET,scored,compuse,both,1=Yes | 2=No,,
+WEBMOB,INTERNET,scored,webmob,both,1=Yes | 2=No,,
+XMOVIE,single,scored,xmovie,X,1=Yes | 2=No,,"wording experiment XMOVIE/XMOVIEY, new in 2022 (codebook p.30): the bank has the form X wording"
+XMOVIE,single,"memory only: form Y wording (pornography, how often), a different question with its own answers",xmoviey,Y,1=Never | 2=Less than once a year | 3=About once or twice a year | 4=Several times a year | 5=About once a month | 6=2-3 times a month | 7=Nearly every week | 8=Every week | 9=Once a day | 10=Several times a day,"The next questions are about pornography- Internet materials or websites, books, movies, magazines, or photographs that explicitly show sex activities. About how often did you look at pornography in the last year?",
+USEWWW*,INTERNET,scored,usewww,both,1=Yes | 2=No,,
+LIFE,single,scored,life,both,1=Exciting | 2=Routine | 3=Dull,,
+RICHWORK,single,scored,richwork,both,1=Continue to work | 2=Stop working,,
