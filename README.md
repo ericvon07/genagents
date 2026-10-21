@@ -1,3 +1,55 @@
+# genagents, with a decision model in the prediction step
+
+**This is a fork of [StanfordHCI/genagents](https://github.com/StanfordHCI/genagents)**, the
+code published with Park et al.'s study of 1,052 people, first released in 2024 as
+*Generative Agent Simulations of 1,000 People* and revised in 2026 as *LLM Agents Grounded in
+Self-Reports Enable General-Purpose Simulation of Individuals*
+([arXiv:2411.10109](https://arxiv.org/abs/2411.10109)). The authors' README follows,
+unchanged, below the line.
+
+The fork asks one question of the published code: what changes when the step that predicts a
+person's answer to a closed question is made by a decision model instead of a language model
+that writes its reasoning first? With `PREDICTOR=jev`, [Jev](https://typesafe.ai), TypeSafe's
+decision model, reads the same agent description the paper's prompt is built from and returns
+probabilities over the question's options. With `PREDICTOR=cot`, the default, the code answers
+as published.
+
+## What changed
+
+The authors' files carry only these numbered deviations. Everything new is in `lab/`.
+
+| | Where | What |
+|---|---|---|
+| D1 | `simulation_engine/settings.py` | Every setting is read from the environment, so the file holds no key and is committed. |
+| D2 | `simulation_engine/gpt_structure.py`, `lab/transport.py` | Chat and embeddings go through OpenRouter, pinned to a declared provider. The model, prompt, `max_tokens` and temperature are the paper's. |
+| D3 | `lab/transport.py` | Transient failures are waited out and recorded. A request that is given up on raises instead of becoming an empty answer. |
+| D4 | `genagents/modules/interaction.py`, `lab/predictor.py`, `lab/jev_backend.py` | `categorical_resp` and `numerical_resp` hand the paper's `agent_desc` to the selected predictor. |
+| D5 | `lab/predictor.py`, `lab/prompts/categorical_direct_v1.txt` | Optional: the paper's single-item prompt without its reasoning steps, at temperature 0 (`--variant direct`). |
+
+`lab/runner.py` runs one condition over a population and the authors' item bank
+(`lab/items.py`), and writes a trace of every request and decision (`lab/trace.py`).
+
+## Running it
+
+- The item bank is read from the authors' replication files, placed beside this folder as
+  `osf-replication/` (`osf-replication/figure2/data/question_master/`).
+- Keys come from the environment, or from a `.env` in the folder above this one:
+  `OPENROUTER_API_KEY` for both predictors, and `TYPESAFE_API_KEY` for `jev`.
+- `example` and `demographic:N` are the populations that ship with the authors' code. The
+  2022 General Social Survey populations used in the experiments (`built:<name>`) were built
+  by a separate tool that is not part of this repository, and are read from
+  `$LAB_DATA/populations`.
+
+```sh
+python -m lab.runner smoke-jev --predictor jev --population example+demographic:20
+python -m lab.runner smoke-cot --predictor cot --llm google/gemma-4-31b-it --population example+demographic:20
+```
+
+Each run writes `run.json`, `predictions.jsonl` and its trace under `runs-local/<name>/` in the
+folder above this one. `python -m lab.runner --help` lists every option.
+
+---
+
 # genagents: Generative Agent Simulations of 1,000 People
 
 ![Cover Image](static_dir/cover3.png)
