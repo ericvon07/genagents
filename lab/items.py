@@ -1,4 +1,4 @@
-"""The item bank: the paper's three instruments, as the question dicts the seam takes (003-IP step 5).
+"""The item bank: the paper's three instruments, as the question dicts the seam takes.
 
 The bank is the authors' own, `<osf>/figure2/data/question_master/`: `gss/main.csv` (177
 items), `big_five/main.csv` (the BFI-44) and `econ_games/main.csv` (five games), each row a
@@ -11,12 +11,12 @@ line, verbatim.
   of the item's id, not a wildcard). All categorical.
 - BFI-44: 44 categorical items on the same five-point agreement scale.
 - Economic games: games 2, 3 and 5 are categorical, games 1 and 4 numerical with decimals
-  (`float_resp`). All five are `flagged` (JE-K: the typed model's weak ground, asked last).
+  (`float_resp`). All five are `flagged` (the typed model's weak ground, asked last).
   Game 4's range is `[0, 40]` in the bank while its text asks for 0.00 to 4.00 and the
   authors' analysis reads it on (0, 4); the bank is kept as written (GT-3).
 
 `batches` cuts the items into the requests the runner sends: in bank order, never across an
-instrument or a change of kind, at most `size` items each (DS-H). Each item's `id` is
+instrument or a change of kind, at most `size` items each. Each item's `id` is
 `<instrument>:<the bank's id>`, which is what a prediction record carries.
 """
 import csv

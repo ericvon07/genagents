@@ -1,9 +1,9 @@
-"""Refuse a launch that lacks the keys its predictor needs (003-IP DS-C, Rule 8).
+"""Refuse a launch that lacks the keys its predictor needs.
 
 `load_env` reads <lab>/.env into the environment without overriding what is already set;
 `require` raises before anything is written under runs-local/. Both predictors need
 OpenRouter (chat for `cot`, embeddings for the retrieval both arms share); `jev` also needs
-TypeSafe. OPENAI_API_KEY is optional: only the embedding fallback of DS-D uses it.
+TypeSafe. OPENAI_API_KEY is optional: only the embedding fallback of `lab/transport.py` uses it.
 """
 import os
 

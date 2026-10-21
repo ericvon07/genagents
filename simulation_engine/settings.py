@@ -1,4 +1,4 @@
-# D1 (System One Lab, 003-IP DS-C): the paper ships this file gitignored, with the key
+# D1 (System One Lab): the paper ships this file gitignored, with the key
 # typed into it. Here every value comes from the environment, so the file holds no secret
 # and is committed; the lab's runner loads <lab>/.env before importing the fork. With
 # nothing set, the values are the paper's example-settings.py and PREDICTOR is `cot`, the

@@ -1,4 +1,4 @@
-"""The OpenRouter door and the ride-out under the paper's `gpt_request` (003-IP DS-D, DS-E).
+"""The OpenRouter door and the ride-out under the paper's `gpt_request`.
 
 D2: one OpenAI client pointed at OpenRouter serves chat and embeddings. Every chat request
 names the provider pin with `allow_fallbacks: false`, so OpenRouter never answers from a
@@ -14,9 +14,9 @@ which the paper's `gpt_request` lets through (its `except` would otherwise turn 
 "GENERATION ERROR" string that the parser reads as an empty answer). The client's own
 retries are off, so every wait the run makes is one this module recorded.
 
-DS-I, the provider policy: `choose` asks OpenRouter which endpoints serve the model and
+The provider policy: `choose` asks OpenRouter which endpoints serve the model and
 ranks the declared candidates (`openai`, `azure`, the two that serve `gpt-4o-mini` with the
-same weights; for `gemma-4-31b-it`, 012-IP GM-B, `friendli`, `crusoe/bf16`, `novita/bf16`)
+same weights; for `gemma-4-31b-it`, `friendli`, `crusoe/bf16`, `novita/bf16`)
 by `uptime_last_30m`; the best is the pin unless one is forced, the rest are
 the fallbacks, and every endpoint's snapshot goes into `run.json`. `policy` then names the
 provider of each chat request. It moves to the next declared provider when a request spent
@@ -25,8 +25,8 @@ last five minutes fall under `min_calls_per_minute` (`throughput`); fifteen minu
 move away from the pin, the next request tries the pin again (`retry_pin`). Every move is a
 `provider_switch` event, emitted before the request that names the new provider.
 
-005-IP PL-E, PL-H: the declared providers are a map by model (`gpt-4o` and `gpt-4o-mini` are
-both served by `openai` and `azure` at one price; `google/gemma-4-31b-it` by three, 012-IP), and `PRICES` holds each model's list price,
+The declared providers are a map by model (`gpt-4o` and `gpt-4o-mini` are
+both served by `openai` and `azure` at one price; `google/gemma-4-31b-it` by three), and `PRICES` holds each model's list price,
 by which the runner's meter prices every `call` event. `fetch_credits` reads the account's
 balance for the credit gate. A 402 (out of credits) is not ridden out: it is an `error` event,
 then a `credits_out` event, and `CreditsOut`, which stops the run.
@@ -56,9 +56,9 @@ FIRST_WAIT_S = 2
 MAX_WAIT_S = 120
 NOT_RETRIED = (400, 401, 402, 403)
 
-# DS-I, PL-E: each chat model's providers that serve the same weights at the same price, as
+# Each chat model's providers that serve the same weights at the same price, as
 # OpenRouter listed them on 2026-09-26 and again on 2026-09-28. `azure/swedencentral` also
-# serves gpt-4o-mini, at a higher price, and is not declared. 012-IP GM-B: gemma-4-31b-it's
+# serves gpt-4o-mini, at a higher price, and is not declared. gemma-4-31b-it's
 # three endpoints at US$0.14 / US$0.40 on 2026-10-04, Friendli first (the sister lab's), then
 # the two that serve bf16; the cheaper endpoints serve fp4 or do not say, and are not declared.
 DECLARED = {
@@ -66,7 +66,7 @@ DECLARED = {
   "openai/gpt-4o": ("openai", "azure"),
   "google/gemma-4-31b-it": ("friendli", "crusoe/bf16", "novita/bf16"),
 }
-# PL-H: list prices in US$ per million tokens (in, out), read on OpenRouter on 2026-09-28,
+# List prices in US$ per million tokens (in, out), read on OpenRouter on 2026-09-28,
 # and gemma-4-31b-it's on 2026-10-04.
 PRICES = {
   "openai/gpt-4o-mini": (0.15, 0.60),
@@ -80,7 +80,7 @@ WINDOW_S = 300           # the throughput floor looks at the last five minutes
 RETRY_PIN_AFTER_S = 900  # fifteen minutes after a move, the pin is tried again
 MATERIAL_GAP = 1.0       # uptime points another provider needs to take the pin from the first declared
 
-# DS-D's fallback: True when the health gate found OpenRouter's embeddings differ from
+# The embedding fallback: True when the health gate found OpenRouter's embeddings differ from
 # the stored ones; embeddings then go straight to OpenAI and the manifest says so.
 embeddings_direct = False
 
@@ -98,7 +98,7 @@ class Failed(Exception):
 
 
 class CreditsOut(Failed):
-  """A backend answered 402: the account is out of credits, and the run stops (PL-H)."""
+  """A backend answered 402: the account is out of credits, and the run stops."""
 
 
 class NoProvider(ValueError):
@@ -106,7 +106,7 @@ class NoProvider(ValueError):
 
 
 def declared_for(model):
-  """The providers declared for a chat model (PL-E); an undeclared model is refused."""
+  """The providers declared for a chat model; an undeclared model is refused."""
   model = openrouter_model(model)
   if model not in DECLARED:
     raise NoProvider("no providers are declared for %s; declared: %s"
@@ -115,7 +115,7 @@ def declared_for(model):
 
 
 class Policy:
-  """Which provider the next chat request names (DS-I). Thread-safe: the runner's agents
+  """Which provider the next chat request names. Thread-safe: the runner's agents
   share one policy."""
 
   def __init__(self, pin="openai", fallbacks=(), min_calls_per_minute=None):
@@ -206,7 +206,7 @@ def rank(body, declared):
 
 
 def choose(model, force_pin=None, declared=None, fetch=None):
-  """DS-I at launch: the pin, the fallbacks and the snapshot `run.json` records."""
+  """The provider policy at launch: the pin, the fallbacks and the snapshot `run.json` records."""
   model = openrouter_model(model)
   declared = declared or declared_for(model)
   order, snapshot = rank((fetch or fetch_endpoints)(model), declared)
@@ -222,7 +222,7 @@ def choose(model, force_pin=None, declared=None, fetch=None):
 
 
 def fetch_credits():
-  """The account's `total_credits` and `total_usage` in US$ (PL-H's credit gate)."""
+  """The account's `total_credits` and `total_usage` in US$, for the credit gate."""
   request = urllib.request.Request(CREDITS_URL, headers={
     "Authorization": "Bearer %s" % settings.OPENROUTER_API_KEY, **HEADERS})
   with urllib.request.urlopen(request, timeout=30) as response:
@@ -270,7 +270,7 @@ def _retryable(exc):
 
 def ride_out(send, kind, model, provider, **request):
   """Call `send()` until it answers, waiting out what a later attempt can cure. `request`
-  (a chat's `max_tokens` and `temperature`) goes into the `call` event as sent (011-F7)."""
+  (a chat's `max_tokens` and `temperature`) goes into the `call` event as sent."""
   for attempt in range(1, ATTEMPTS + 1):
     started = monotonic()
     try:
@@ -283,7 +283,7 @@ def ride_out(send, kind, model, provider, **request):
         reason = "budget_spent" if _retryable(exc) else "not_retryable"
         trace.emit("error", kind=kind, model=model, provider=provider, attempt=attempt,
                    status=_status(exc), reason=reason, error=f"{type(exc).__name__}: {exc}")
-        if _status(exc) == 402:  # PL-H: out of credits; every later request would be refused too
+        if _status(exc) == 402:  # Out of credits; every later request would be refused too
           trace.emit("credits_out", kind=kind, model=model, provider=provider, status=402,
                      error=f"{type(exc).__name__}: {exc}")
           raise CreditsOut(reason, exc) from exc
@@ -297,7 +297,7 @@ def ride_out(send, kind, model, provider, **request):
     usage = getattr(response, "usage", None)
     fields = dict(request)
     if kind == "chat":
-      # 011-F7: why the reply stopped ("length" is the cap), which build answered, and the
+      # Why the reply stopped ("length" is the cap), which build answered, and the
       # reply's text for the seam, which keeps it when the paper's parser finds too few answers
       choice = response.choices[0]
       fields["finish_reason"] = getattr(choice, "finish_reason", None)
@@ -320,8 +320,8 @@ def last_reply():
 
 
 def chat(prompt, model, max_tokens, temperature):
-  """D2 + D3: the paper's chat request, through OpenRouter, pinned, ridden out; DS-I picks the
-  provider it names."""
+  """D2 + D3: the paper's chat request, through OpenRouter, pinned, ridden out; the provider
+  policy picks the provider it names."""
   client = make_client()
   model = openrouter_model(model)
   provider = policy.provider()
@@ -342,7 +342,7 @@ def chat(prompt, model, max_tokens, temperature):
 
 
 def embed(text, model):
-  """D2 + D3: the paper's embedding request, through OpenRouter unless DS-D's fallback is on."""
+  """D2 + D3: the paper's embedding request, through OpenRouter unless the embedding fallback is on."""
   if embeddings_direct:
     client, model, provider = make_direct_client(), model.split("/")[-1], "openai-direct"
   else:
@@ -360,9 +360,9 @@ def cosine(a, b):
 
 
 def embedding_identity(text, stored, embed_fn=None, threshold=0.999):
-  """DS-D's check: does `text` re-embed to the vector the agent bank stored for it?
+  """The embedding check: does `text` re-embed to the vector the agent bank stored for it?
 
-  Returns (cosine, passed). The health gate (DS-J) runs it on a node of the example
+  Returns (cosine, passed). The health gate runs it on a node of the example
   agent; a failure turns `embeddings_direct` on for the run and the manifest says so.
   """
   from simulation_engine.gpt_structure import get_text_embedding

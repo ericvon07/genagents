@@ -12,7 +12,7 @@ from simulation_engine.settings import *
 from simulation_engine.global_methods import *
 from simulation_engine.gpt_structure import *
 from simulation_engine.llm_json_parser import *
-from lab import predictor as _seam  # D4 (System One Lab, 003-IP DS-F)
+from lab import predictor as _seam  # D4 (System One Lab)
 
 
 def _main_agent_desc(agent, anchor): 

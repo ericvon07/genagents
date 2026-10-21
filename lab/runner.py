@@ -1,4 +1,4 @@
-"""The runner: one arm over a population and the item bank, into runs-local/<name>/ (003-IP DS-H).
+"""The runner: one arm over a population and the item bank, into runs-local/<name>/.
 
   cd <genagents>
   python -m lab.runner smoke-cot-a --predictor cot --llm gpt-4o-mini --population example+demographic:20 \
@@ -18,28 +18,28 @@ A launch, in order:
 2. The population is drawn (`example`, the authors' interview agent; `demographic:N`, N
    folders of `gss_agents/` drawn by the seed from the sorted list; `built:<name>[:N]`, both
    agents of the first N respondents of a population built under `LAB_DATA`, each with its
-   own items, 005-IP PL-D, or one agent of each with `--agents survey|demographic`, 013-IP
-   MC-D) and hashed; the items are loaded and cut into batches (`lab.items`), per agent;
+   own items, or one agent of each with `--agents survey|demographic`) and hashed; the
+   items are loaded and cut into batches (`lab.items`), per agent;
    the knobs are fingerprinted.
-3. The credit gate (005-IP PL-H): the OpenRouter balance must cover the spend cap plus
+3. The credit gate: the OpenRouter balance must cover the spend cap plus
    US$0.50, or the launch is refused having written nothing. For the chain-of-thought arm,
-   the provider query (DS-I) then names the pin and the fallbacks, and `transport.policy`
+   the provider query then names the pin and the fallbacks, and `transport.policy`
    is set from them.
-4. The health gate (DS-J): three answers in a row from the arm's backend, none more than a
+4. The health gate: three answers in a row from the arm's backend, none more than a
    minute after the one before, and, when an agent has memories, the embedding identity
-   check (DS-D) — its failure turns the direct-to-OpenAI route on, and the run says so. The
+   check — its failure turns the direct-to-OpenAI route on, and the run says so. The
    gate's events are held in memory: a failed gate writes nothing.
 5. The run folder is created, `run.json` written, and the gate's events become the
    trace's first lines — all before the first request of the run (S5.1, S8.2).
 6. Agents are answered in threads, each its batches in bank order through the paper's
    `categorical_resp` / `numerical_resp`, so the state is built by the paper's code and the
-   seam (D4) records each item. On a built population with `withhold.json` (010-IP WB-C),
+   seam (D4) records each item. On a built population with `withhold.json`,
    each item is asked alone, by an agent whose memory stream lacks that item's withheld
    nodes for that call only; such a population is refused at any batch size but one,
-   before the credit gate. A population with several maps (013-IP MC-C: `withhold.json`
+   before the credit gate. A population with several maps (`withhold.json`
    for every answer, `withhold-k10.json`, `withhold-k30.json`) is refused unless
-   `--withhold <level>` names one of them (MC-D). `--variant direct` on the `cot` arm is
-   D5 (MC-F): one categorical item a call, refused otherwise before the credit gate. As a batch ends its items become lines of
+   `--withhold <level>` names one of them. `--variant direct` on the `cot` arm is
+   D5: one categorical item a call, refused otherwise before the credit gate. As a batch ends its items become lines of
    `predictions.jsonl`, taken from the seam's `decision` events. A failed batch is recorded
    `ok: false` and the agent goes on. Three things stop every agent: `BackendDown`, a 402
    (`CreditsOut`), and the meter refusing a batch that could pass `--max-usd` (a
@@ -67,7 +67,7 @@ FORK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def newest(models):
-  """The latest version among `models` ("jev-1.13.0" after "jev-1.9.0"), or None (011-F7)."""
+  """The latest version among `models` ("jev-1.13.0" after "jev-1.9.0"), or None."""
   def key(model):
     return [(0, int(part)) if part.isdigit() else (1, part)
             for part in re.split(r"[.\-]", model)]
@@ -76,7 +76,7 @@ def newest(models):
 
 def paper_max_tokens():
   """The cap the paper's `gpt_request` sends, read from its signature rather than retyped, so
-  `run.json` and the readout's cut count follow the code (011-F7)."""
+  `run.json` and the readout's cut count follow the code."""
   import inspect
   from simulation_engine.gpt_structure import gpt_request
   return inspect.signature(gpt_request).parameters["max_tokens"].default
@@ -86,18 +86,18 @@ POPULATIONS = os.path.join(FORK, "agent_bank", "populations")
 EXAMPLE = os.path.join("single_agent", "01fd7d2a-0357-4c1b-9f3e-8eade2d537ae")
 DEMOGRAPHIC = "gss_agents"
 BUILT = "built:"
-BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order (GP-C)
-WITHHOLD = "withhold.json"  # 010-IP WB-C: the nodes withheld per agent and held-out item
+BUILT_TYPES = ("demographic", "survey")  # both agents of a respondent, in this order
+WITHHOLD = "withhold.json"  # The nodes withheld per agent and held-out item
 VARIANTS = {"cot": (None, "direct"), "jev": (None, "steps")}
 # The chain-of-thought models a run may name: the paper's, the published code's default, and
-# 012-IP's cheap open one (GM-B), each declared with its providers and price in `transport`.
+# a cheap open one, each declared with its providers and price in `transport`.
 LLMS = ("gpt-4o-mini", "gpt-4o", "google/gemma-4-31b-it")
 UNNAMED_MODEL = (
   "a cot run must name its chain-of-thought model: pass --llm gpt-4o (the paper's model), "
   "--llm gpt-4o-mini or --llm google/gemma-4-31b-it, or set LLM_VERS. Unnamed, the published "
   "code's default, gpt-4o-mini, would answer, and run.json would look as clean as a gpt-4o "
   "run's")
-MARGIN_USD = 0.50  # PL-H: the balance must cover the cap and this much more
+MARGIN_USD = 0.50  # The balance must cover the cap and this much more
 
 GATE_ANSWERS = 3
 GATE_MAX_GAP_S = 60
@@ -127,9 +127,8 @@ def population(spec, seed, root=POPULATIONS, built=None, kinds=None):
   """[(agent_id, agent_type, folder, own)] for `example+demographic:N` or `built:<name>[:N]`.
 
   `own` is None for an agent that answers the run's items, and the item ids `items.json`
-  holds for an agent of a built population (PL-D). A built population is not mixed with
-  other parts. `kinds`, one agent type or None for both, is a built population's only
-  (013-IP MC-D).
+  holds for an agent of a built population. A built population is not mixed with
+  other parts. `kinds`, one agent type or None for both, applies to a built population only.
   """
   if spec.startswith(BUILT):
     return built_agents(spec, built or built_root(), kinds)
@@ -152,7 +151,7 @@ def population(spec, seed, root=POPULATIONS, built=None, kinds=None):
 
 
 def built_root(environ=None):
-  """`LAB_DATA/populations`, where the lab's builder writes (004-ST GP-J)."""
+  """`LAB_DATA/populations`, where the lab's builder writes."""
   environ = os.environ if environ is None else environ
   if not environ.get("LAB_DATA"):
     raise ValueError("a built population needs LAB_DATA in the environment (<lab>/.env)")
@@ -169,7 +168,7 @@ def built_spec(spec):
 
 def built_agents(spec, root, kinds=None):
   """Both agents of the first N respondents in draw order, each with its held-out items; with
-  `kinds` ("survey" or "demographic"), that agent of each only (013-IP MC-D)."""
+  `kinds` ("survey" or "demographic"), that agent of each only."""
   if kinds is not None and kinds not in BUILT_TYPES:
     raise ValueError("--agents %r: a built population's agents are %s"
                      % (kinds, " or ".join(BUILT_TYPES)))
@@ -189,7 +188,7 @@ def built_agents(spec, root, kinds=None):
 def built_data(spec, root, level=None):
   """What `data` says of a built population: its files by sha256, checked against the
   build's own record, so a population changed after its build is refused. The map is the
-  one `level` names (013-IP MC-D), else `withhold.json`."""
+  one `level` names, else `withhold.json`."""
   name, n = built_spec(spec)
   folder = os.path.join(root, name)
   meta = read_json(folder, "population.json")
@@ -202,7 +201,7 @@ def built_data(spec, root, level=None):
           "population_json_sha256": sha256_file(os.path.join(folder, "population.json")),
           "items_sha256": files["items.json"], "truth_sha256": files["truth.jsonl"],
           "respondents": n if n is not None else len(meta["respondents"]),
-          "held_out": "%d scorable items per respondent, 004-ST GP-E" % meta["slice"]["k"]}
+          "held_out": "%d scorable items per respondent" % meta["slice"]["k"]}
   chosen = withhold_file(folder, meta, level)
   if chosen:
     digest = sha256_file(os.path.join(folder, chosen))
@@ -216,7 +215,7 @@ def built_data(spec, root, level=None):
 
 
 def withhold_file(folder, meta, level=None):
-  """The map a run of this population reads, or None (010-IP WB-C, 013-IP MC-D).
+  """The map a run of this population reads, or None.
 
   A population whose build lists several maps in `population.json`'s `maps` ({level: file})
   must be named one with `--withhold <level>`; one with `withhold.json` alone takes it and
@@ -225,8 +224,8 @@ def withhold_file(folder, meta, level=None):
   name = meta.get("name") or os.path.basename(folder.rstrip(os.sep))
   if maps:
     if level is None:
-      raise ValueError("%s holds one map per level (%s): name one with --withhold "
-                       "(013-IP MC-D)" % (name, ", ".join(maps)))
+      raise ValueError("%s holds one map per level (%s): name one with --withhold"
+                       % (name, ", ".join(maps)))
     if level not in maps:
       raise ValueError("--withhold %s: %s's levels are %s" % (level, name, ", ".join(maps)))
     return maps[level]
@@ -238,8 +237,8 @@ def withhold_file(folder, meta, level=None):
 
 
 def built_withhold(spec, root, level=None):
-  """{agent_id: {item_id: [node_id]}} of a built population's map, else None (010-IP WB-C);
-  `level` names the map of a population with several (013-IP MC-D)."""
+  """{agent_id: {item_id: [node_id]}} of a built population's map, else None;
+  `level` names the map of a population with several."""
   if not spec.startswith(BUILT):
     if level is not None:
       raise ValueError("--withhold %s names a map of a built population, not of %s"
@@ -255,7 +254,7 @@ def built_withhold(spec, root, level=None):
 
 def withholding(agent, node_ids):
   """`agent` itself when nothing is withheld, else a shallow copy whose memory stream lacks
-  the nodes `node_ids`, for one item (010-IP WB-C). The nodes kept are the agent's own, in
+  the nodes `node_ids`, for one item. The nodes kept are the agent's own, in
   its order; the agent is untouched, so the next item sees its whole stream again."""
   if not node_ids:
     return agent
@@ -298,7 +297,7 @@ def population_sha1(agents):
 
 
 def agent_batches(agents, bank, n_items, size):
-  """{agent_id: batches}: the run's items, or the agent's own in bank order (PL-D); `n_items`
+  """{agent_id: batches}: the run's items, or the agent's own in bank order; `n_items`
   keeps the first N of either. An own item the bank does not hold is refused."""
   index = {item.id: k for k, item in enumerate(bank)}
   out = {}
@@ -342,7 +341,7 @@ def code_state(repo=FORK):
           "dirty": bool(git("status", "--porcelain"))}
 
 
-# --- the health gate (DS-J) -----------------------------------------------------
+# --- the health gate -----------------------------------------------------
 
 def health_gate(predictor, agents):
   """Three answers from the arm's backend and the embedding identity check.
@@ -393,7 +392,7 @@ def health_gate(predictor, agents):
 
 
 def check_embeddings(text, stored):
-  """DS-D: OpenRouter's embedding of a stored node, and the direct route if it differs."""
+  """OpenRouter's embedding of a stored node, and the direct route if it differs."""
   from lab import transport
   from simulation_engine import settings
   try:
@@ -418,7 +417,7 @@ def check_embeddings(text, stored):
   return result
 
 
-# --- the spend cap and the stop (PL-H) ------------------------------------------
+# --- the spend cap and the stop ------------------------------------------
 
 def prices(llm):
   """US$ per million tokens, by `call` kind: the run's chat model, the embeddings, Jev."""
@@ -432,7 +431,7 @@ def prices(llm):
 
 
 class Meter:
-  """The run's spend at list price, and the cap's judgement (PL-H).
+  """The run's spend at list price, and the cap's judgement.
 
   A trace sink: every `call` event is priced by its kind at `prices`. Before a batch starts,
   `admit` refuses it when what was spent, plus the dearest batch so far for it and for every
@@ -500,7 +499,7 @@ class CreditsShort(RuntimeError):
 
 
 def credit_gate(max_usd, read):
-  """PL-H: the balance must be at least the cap plus `MARGIN_USD`; returns what run.json keeps."""
+  """The balance must be at least the cap plus `MARGIN_USD`; returns what run.json keeps."""
   try:
     credits = read()
   except Exception as exc:
@@ -550,7 +549,7 @@ def records(agent_id, agent_type, b, batch, decided, error, latency_ms, withheld
       r.update({k: d[k] for k in KEPT if k in d})
     r["p"] = d.get("distribution") if d else None
     if withheld is not None:
-      r["withheld"] = withheld  # the nodes withheld for this item (010-IP WB-C)
+      r["withheld"] = withheld  # the nodes withheld for this item
     r.update(fail_safe=False, latency_ms=latency_ms, ts=now_iso())
     out.append(r)
   return out
@@ -558,8 +557,7 @@ def records(agent_id, agent_type, b, batch, decided, error, latency_ms, withheld
 
 def answer_agent(agent_id, agent_type, folder, batches, collector, write, stop, meter,
                  withhold=None):
-  """Answer one agent's batches in order. With `withhold` ({item_id: [node_id]}, 010-IP
-  WB-C), every batch is one item, asked with that item's nodes out of the memory stream."""
+  """Answer one agent's batches in order. With `withhold` ({item_id: [node_id]}), every batch is one item, asked with that item's nodes out of the memory stream."""
   from genagents.genagents import GenerativeAgent
   from lab.jev_backend import BackendDown
   from lab.transport import CreditsOut
@@ -630,12 +628,12 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
   from simulation_engine import settings
   settings.PREDICTOR = predictor
   if llm:
-    settings.LLM_VERS = llm  # PL-E; the seam reads it at call time
+    settings.LLM_VERS = llm  # the seam reads it at call time
   chat_model = transport.openrouter_model(settings.LLM_VERS)
   declared = transport.declared_for(chat_model)
   jev_backend.reset()
   jev_backend.variant = variant if predictor == "jev" else None
-  seam.variant = variant if predictor == "cot" else None  # D5 (013-IP MC-F)
+  seam.variant = variant if predictor == "cot" else None  # D5
   transport.embeddings_direct = False
   transport.policy = transport.Policy()
 
@@ -646,16 +644,16 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
               if population_spec.startswith(BUILT) or level is not None else None)
   if withhold is not None and settings.MAX_CHUNK_SIZE != 1:
     raise ValueError("%s withholds each item's family, so each item is asked alone: set "
-                     "MAX_CHUNK_SIZE=1, not %s (010-IP WB-C)"
+                     "MAX_CHUNK_SIZE=1, not %s"
                      % (population_spec, settings.MAX_CHUNK_SIZE))
   asked = [item for agent_id in batches for batch in batches[agent_id] for item in batch]
   if variant == seam.DIRECT:
     if settings.MAX_CHUNK_SIZE != 1:
-      raise ValueError("--variant direct asks one item a call: set MAX_CHUNK_SIZE=1, not %s "
-                       "(013-IP MC-F)" % settings.MAX_CHUNK_SIZE)
+      raise ValueError("--variant direct asks one item a call: set MAX_CHUNK_SIZE=1, not %s"
+                       % settings.MAX_CHUNK_SIZE)
     numerical = sorted({item.id for item in asked if item.kind != "categorical"})
     if numerical:
-      raise ValueError("--variant direct is categorical only, and %s are not (013-IP MC-F)"
+      raise ValueError("--variant direct is categorical only, and %s are not"
                        % ", ".join(numerical[:3]))
   used = [i for i in instruments if any(item.instrument == i for item in asked)]
   built = (built_data(population_spec, built_root(), level)
@@ -668,7 +666,7 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
             "declared": list(declared), "pin": pin,
             "min_calls_per_minute": min_calls_per_minute, "max_usd": max_usd,
             "prices": price}
-  if level is not None or kinds is not None:  # absent before 013-IP, so older runs keep their sha1
+  if level is not None or kinds is not None:  # absent from older runs' configs, which keep their sha1
     config.update(withhold=level, agents=kinds)
 
   balance = credit_gate(max_usd, credits or transport.fetch_credits)
@@ -711,9 +709,9 @@ def launch(name, predictor, population_spec="example+demographic:20", seed=20260
     data.update(built)
     data["items"]["per_agent"] = per_agent(sum(map(len, b)) for b in batches.values())
     if withhold_sha256:
-      data["items"]["withhold_sha256"] = withhold_sha256  # beside batch_size (WB-C)
+      data["items"]["withhold_sha256"] = withhold_sha256  # beside batch_size
     if withhold_level:
-      data["items"]["withhold_level"] = withhold_level  # 013-IP MC-D
+      data["items"]["withhold_level"] = withhold_level
   run = {
     "name": name,
     "condition": {"predictor": predictor, "model": model, "variant": variant,
@@ -795,11 +793,11 @@ def main(argv=None):
   ap.add_argument("--variant", default=None, choices=("steps", "direct"),
                   help="jev: steps is jev-steps, the paper's reasoning steps in the instruction; "
                        "cot: direct is D5, the paper's prompt less its reasoning steps, at "
-                       "temperature 0 (013-IP MC-F)")
+                       "temperature 0")
   ap.add_argument("--withhold", default=None, metavar="LEVEL",
-                  help="the map of a population with several, one per level (013-IP MC-D)")
+                  help="the map of a population with several, one per level")
   ap.add_argument("--agents", default=None, choices=BUILT_TYPES,
-                  help="ask only this agent of each respondent of a built population (MC-D)")
+                  help="ask only this agent of each respondent of a built population")
   ap.add_argument("--max-usd", type=float, default=None,
                   help="the run's spend cap at list price; the balance must cover it plus US$0.50")
   ap.add_argument("--out", default=RUNS_LOCAL)

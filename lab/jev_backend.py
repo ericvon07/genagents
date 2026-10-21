@@ -1,4 +1,4 @@
-"""The typed backend: Jev answers the forced choice over the paper's `agent_desc` (003-IP DS-G).
+"""The typed backend: Jev answers the forced choice over the paper's `agent_desc`.
 
 One `system_one` request per batch. The state is the very `agent_desc` string the
 chain-of-thought prompt is built from; each item of the batch is one question, keyed by its
@@ -12,7 +12,7 @@ paper's task sentence and the item's text:
   chosen integer;
 - a float range is a `Score` over ten evenly spaced levels, each a sentence naming its
   value; the pick is the expected value mapped back onto the range, the distribution the
-  probability of each level (JE-K: numeric items are the typed model's weak ground).
+  probability of each level (numeric items are the typed model's weak ground).
 
 Each item comes back as a dict the seam writes into its `decision` event: `predicted`,
 `primitive`, `distribution`, `confidence` and `model`, the version the response reported,
@@ -25,11 +25,11 @@ timeout for a state of up to ~30k tokens. The SDK's own retries are off; `_send`
 connections with deterministic backoff (2, 4, 8… s, `Retry-After` wins, 60 s cap, 8
 attempts), each wait a `rate_limit` event, and never retries another 4xx. A request given
 up on is an `error` event and `transport.Failed`; a 402 is also a `credits_out` event and
-`transport.CreditsOut`, which stops the run (005-IP PL-H). After ten consecutive failed
+`transport.CreditsOut`, which stops the run. After ten consecutive failed
 batches the next one is refused with a `backend_down` event and `BackendDown`, without being
 sent; one answered batch resets the count.
 
-`jev-steps` (005-IP PL-F, `variant = "steps"`): each question's `instructions` carries the
+`jev-steps` (`variant = "steps"`): each question's `instructions` carries the
 paper's reasoning steps for its kind, read verbatim from the chain-of-thought template
 (`categorical_resp/batch_v1.txt`, `numerical_resp/batch_v1.txt`), between the task sentence
 and the question. The state and the criteria are those of `jev`, byte for byte; `instructions`
@@ -54,7 +54,7 @@ RETRIED = {408, 429}  # and every 5xx
 MAX_CHOICES = 255
 SCORE_LEVELS = 10
 DOWN_AFTER = 10
-USD_PER_MTOK = (0.042, 0.0)  # list price in, out (002-ST §6, 2026-09-26): output is free
+USD_PER_MTOK = (0.042, 0.0)  # list price in, out (2026-09-26): output is free
 VARIANTS = (None, "steps")
 TEMPLATES = os.path.join(settings.LLM_PROMPT_DIR, "generative_agent", "interaction")
 
@@ -70,7 +70,7 @@ _lock = threading.Lock()
 _client = None
 _consecutive_errors = 0
 models_seen = set()  # every version a response reported; the runner writes it into run.json
-variant = None       # PL-F: "steps" for jev-steps; the runner sets it after `reset`
+variant = None       # "steps" for jev-steps; the runner sets it after `reset`
 
 
 class BackendDown(Exception):
@@ -195,7 +195,7 @@ def _send(state, questions):
         reason = "budget_spent" if _retryable(exc) else "not_retryable"
         trace.emit("error", kind="typed", model=MODEL, provider="typesafe", attempt=attempt,
                    status=status, reason=reason, error=f"{type(exc).__name__}: {exc}")
-        if status == 402:  # PL-H: out of credits
+        if status == 402:  # Out of credits
           trace.emit("credits_out", kind="typed", model=MODEL, provider="typesafe", status=402,
                      error=f"{type(exc).__name__}: {exc}")
           raise CreditsOut(reason, exc) from exc

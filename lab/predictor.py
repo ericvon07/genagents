@@ -1,4 +1,4 @@
-"""The decision seam: who answers the forced choice (003-IP DS-F, deviation D4).
+"""The decision seam: who answers the forced choice (deviation D4).
 
 The paper's `categorical_resp` and `numerical_resp` build `agent_desc` as published and
 then call `answer` here instead of their `run_gpt_generate_*`. `PREDICTOR` (settings, D1)
@@ -8,8 +8,8 @@ picks the backend at call time:
   unchanged, with the paper's arguments, and returns their output unchanged: with `cot`
   the fork behaves as the published code (law 2).
 - `jev` hands the same `agent_desc` and the same question dict to `lab.jev_backend`
-  (003-IP step 4) and returns its picks in the paper's output shape.
-- `cot` with `variant = "direct"` (013-IP MC-F, deviation D5) asks the same model for the
+ and returns its picks in the paper's output shape.
+- `cot` with `variant = "direct"` (deviation D5) asks the same model for the
   same item over the same `agent_desc`, with the paper's single-item prompt less its three
   reasoning steps (`lab/prompts/categorical_direct_v1.txt`) at temperature 0, and reads the
   reply with the paper's parser. One categorical item a call; the paper's files are not
@@ -29,12 +29,12 @@ from lab import trace
 from simulation_engine import settings
 
 KINDS = ("categorical", "numerical")
-# 013-IP MC-F, D5: the runner sets `variant` for a `cot` run; None is the paper's predictor.
+# D5: the runner sets `variant` for a `cot` run; None is the paper's predictor.
 variant = None
 DIRECT = "direct"
 DIRECT_PROMPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts",
                              "categorical_direct_v1.txt")
-DIRECT_TEMPERATURE = 0.0  # the author's choice (013-IP MC-F); the published code sends 0.7
+DIRECT_TEMPERATURE = 0.0  # the author's choice; the published code sends 0.7
 
 
 def state_sha1(agent_desc):
@@ -59,7 +59,7 @@ def _cot(kind, agent_desc, questions, float_resp):
   """The paper's predictor: its own function, its own arguments, its own output.
 
   The model is `settings.LLM_VERS` read at call time, as `PREDICTOR` is: the paper's
-  `interaction` copies it at import, and the runner's `--llm` (005-IP PL-E) sets it later.
+  `interaction` copies it at import, and the runner's `--llm` sets it later.
   With nothing set the two are the same value.
   """
   from genagents.modules import interaction  # here, not above: interaction imports this module
@@ -76,7 +76,7 @@ def _cot(kind, agent_desc, questions, float_resp):
   # answer onto the wrong item; the record says when the count does not match.
   aligned = len(responses) == len(questions)
   if not aligned:
-    # 011-F7: the reply itself, so a run can say why it parsed short (the cap, a refusal,
+    # The reply itself, so a run can say why it parsed short (the cap, a refusal,
     # another shape); the records are written as before
     from lab import transport
     trace.emit("unaligned", questions=len(questions), answers=len(responses),
@@ -89,7 +89,7 @@ def _cot(kind, agent_desc, questions, float_resp):
 
 
 def _direct(kind, agent_desc, questions):
-  """D5 (013-IP MC-F): the paper's `run_gpt_generate_categorical_resp` for one item, with the
+  """D5: the paper's `run_gpt_generate_categorical_resp` for one item, with the
   direct template and temperature 0. The prompt's input is built as the paper builds it, the
   prompt by the paper's `generate_prompt`, and the reply read by the paper's parser; the
   request goes through D2's door with the paper's cap, as `gpt_request` sends it, and a
@@ -136,7 +136,7 @@ def backend(predictor):
     try:
       from lab import jev_backend  # noqa: F401
     except ModuleNotFoundError as exc:
-      raise NotImplementedError("the typed backend lands in 003-IP step 4") from exc
+      raise NotImplementedError("the typed backend needs lab/jev_backend.py and its SDK") from exc
   return BACKENDS[predictor]
 
 

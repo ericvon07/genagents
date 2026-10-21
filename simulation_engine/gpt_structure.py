@@ -4,7 +4,7 @@ import base64
 from typing import List, Union
 
 from simulation_engine.settings import *
-from lab import transport  # D2, D3 (System One Lab, 003-IP DS-D, DS-E)
+from lab import transport  # D2, D3 (System One Lab)
 
 openai.api_key = OPENAI_API_KEY
 
